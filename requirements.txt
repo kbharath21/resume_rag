@@ -1,0 +1,27 @@
+# Web Framework
+fastapi==0.110.0
+uvicorn==0.27.1
+
+# Database
+pymilvus==2.4.0
+
+# AI
+openai==1.12.0
+
+# PDF Processing
+pymupdf==1.23.26
+unstructured==0.21.5
+pytesseract==0.3.10
+pdf2image==1.17.0
+pillow==10.2.0
+
+# Utilities
+python-dotenv==1.0.1
+requests==2.32.5
+pydantic==2.6.1
+
+# Error Tracking
+sentry-sdk[fastapi]==1.40.6
+
+# UI
+streamlit==1.31.1

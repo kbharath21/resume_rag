@@ -1,0 +1,6 @@
+storing_api.py
+.env
+venv/
+__pycache__/
+*.pyc
+invalid_resumes_log.txt
