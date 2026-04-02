@@ -32,5 +32,3 @@ class RefreshToken(Base):
     family_id = Column(String, nullable=False, default="")
     created_at = Column(DateTime, default=datetime.utcnow)
     user = relationship("User", back_populates="refresh_tokens")
-
-

@@ -10,6 +10,12 @@ from redis_client import redis_client
 from auth_utils import hash_password, verify_password, create_access_token, create_refresh_token, SECRET_KEY, ALGORITHM
 import uuid
 from datetime import datetime, timedelta
+from pydantic import BaseModel
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
 app = FastAPI()
 http_bearer = HTTPBearer()
 
@@ -22,9 +28,10 @@ def get_current_user(
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("user_id")
+        role = payload.get("role")
         if user_id is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-        return {"user_id": user_id}
+        return {"user_id": user_id, "role": role}
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
@@ -53,7 +60,7 @@ def register(email: str, password: str, role: UserRole = UserRole.candidate, db:
 
 @app.post("/me")
 def get_me(user: dict = Depends(get_current_user)):
-    return {"user_id": user["user_id"]}
+    return {"user_id": user["user_id"], "role": user["role"]}
 
 @app.post("/logout")
 def logout(refresh_token: str, credentials: HTTPAuthorizationCredentials = Depends(http_bearer), db: Session = Depends(get_db)):
@@ -79,27 +86,26 @@ def logout(refresh_token: str, credentials: HTTPAuthorizationCredentials = Depen
 
     return {"message": "Logged out successfully"}
 
-@app.post("/login")    
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == form_data.username).first()
-    if not user: 
-        raise HTTPException(status_code=400, detail= "Invalid credentials")
+@app.post("/login")
+def login(form_data: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == form_data.email).first()
+    if not user:
+        raise HTTPException(status_code=400, detail = "Invalid Credentials")
 
     if not verify_password(form_data.password, user.password):
-        raise HTTPException(status_code = 400, detail= "Ivalid credentials")
+        raise HTTPException(status_code=400, detail = "Invalid CREDS")
 
-
-    access_token = create_access_token({"user_id": user.id, "role": user.role})
-    
-    family_id = str(uuid.uuid4())
+    access_token= create_access_token({"user_id":user.id, "role":user.role})
+    family_id= str(uuid.uuid4())
     refresh_token = create_refresh_token({"user_id": user.id, "role": user.role, "family_id": family_id})
-    
+
     db_refresh_token = RefreshToken(
         user_id=user.id,
         token=refresh_token,
         expires_at=datetime.utcnow() + timedelta(days=7),
         family_id=family_id
     )
+
     db.add(db_refresh_token)
     db.commit()
 

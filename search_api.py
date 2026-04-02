@@ -7,6 +7,7 @@ from openai import OpenAI
 import main
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
+from redis_client import redis_client
 
 http_bearer = HTTPBearer()
 load_dotenv()
@@ -23,6 +24,9 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(http_bearer)
 ) -> dict:
     token = credentials.credentials
+
+    if redis_client.get(f"blacklist:{token}"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been invalidated")
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("user_id")
@@ -38,6 +42,24 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token is invalid or expired"
         )
+        
+RATE_LIMIT = 5      
+RATE_WINDOW = 60 
+
+def check_rate_limit(user_id: int):
+    key = f"rate: {user_id}"
+    count = redis_client.get(key)
+    if count and int(count) >= RATE_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded. Max {RATE_LIMIT} requests per {RATE_WINDOW} seconds"
+        )
+    pipe = redis_client.pipeline()
+    pipe.incr(key)
+    pipe.expire(key, RATE_WINDOW)
+    pipe.execute()
+
+
 
 class SearchRequest(BaseModel):
     query:str
@@ -47,8 +69,9 @@ class SearchRequest(BaseModel):
 async def search_candidates(request: SearchRequest, user: dict = Depends(get_current_user)):
     if user["role"] != "hr":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only HR can search candidates")
+    check_rate_limit(user["user_id"])    
     try:
-        collection_name = os.getenv("MILVUS_COLLECTION_NAME", "hybrid_search065")
+        collection_name = os.getenv("MILVUS_COLLECTION_NAME", "hybrid_search006")
 
         print(f"searching for: {request.query}")
         response= client.embeddings.create(
