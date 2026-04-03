@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from pymilvus import Collection
 from dotenv import load_dotenv
 from openai import OpenAI
-from requests import Session
+from sqlalchemy.orm import Session
 import main
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
@@ -215,6 +215,7 @@ def get_job_postings(user: dict= Depends(get_current_user), db: Session = Depend
                     "description": job_posting.description,
                     "location": job_posting.location,
                     "salary_range": job_posting.salary_range,
+                    "apply_link": job_posting.apply_link,
                     "is_active": job_posting.is_active,
                     "created_at": job_posting.created_at
                 }
@@ -237,6 +238,7 @@ def get_job_posting(job_id: int , user: dict= Depends(get_current_user), db: Ses
         "location": posting.location,
         "salary_range": posting.salary_range,
         "apply_link": posting.apply_link,
+        "is_active": posting.is_active,
         "created_at": posting.created_at,
     }
 
