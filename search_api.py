@@ -201,7 +201,7 @@ def create_job_posting(payload: JobPostingCreate, user: dict= Depends(get_curren
 @app.post("/get_job_postings")
 def get_job_postings(user: dict= Depends(get_current_user), db: Session = Depends(get_db)):    
     if user["role"] != "hr":
-        raise HTTPException(status= status.HTTP_403_FORBIDDEN, detail= "Only HR can get job postings")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only HR can get job postings")
     job_postings= db.query(JobPosting).filter(JobPosting.hr_id ==user["user_id"]).all()
 
     return {
@@ -227,7 +227,7 @@ def get_job_postings(user: dict= Depends(get_current_user), db: Session = Depend
 def get_job_posting(job_id: int , user: dict= Depends(get_current_user), db: Session = Depends(get_db)):
     posting = db.query(JobPosting).filter(JobPosting.id==job_id).first()
     if not posting:
-        raise HTTPException(status = status.HTTP_404_NOT_FOUND, detail = "Job posting not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job posting not found")
     return {
         "status": "success",
         "id": posting.id,
