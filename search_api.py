@@ -1,13 +1,17 @@
 import os
+from typing import List, Optional
 from fastapi import FastAPI, Depends, HTTPException, status
 from pydantic import BaseModel
 from pymilvus import Collection
 from dotenv import load_dotenv
 from openai import OpenAI
+from requests import Session
 import main
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from redis_client import redis_client
+from database import get_db
+from models import JobPosting
 
 http_bearer = HTTPBearer()
 load_dotenv()
@@ -19,6 +23,30 @@ app= FastAPI()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
+
+class SearchRequest(BaseModel):
+    query: str
+    limit: int = 10
+
+class JobPostingCreate(BaseModel):
+    company_name: str
+    role_title: str
+    department: Optional[str] = None
+    description: str
+    location: Optional[str] = None
+    salary_range: Optional[str] = None
+    apply_link: Optional[str] = None
+
+class SaveCandidateRequest(BaseModel):
+    candidate_user_id: int
+    job_posting_id: Optional[int] = None
+    note: Optional[str] = None
+
+class OutreachRequest(BaseModel):
+    candidate_ids: List[int]
+    job_posting_id: int
+
+
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(http_bearer)
@@ -59,11 +87,6 @@ def check_rate_limit(user_id: int):
     pipe.expire(key, RATE_WINDOW)
     pipe.execute()
 
-
-
-class SearchRequest(BaseModel):
-    query:str
-    limit : int = 10
 
 @app.post("/search_candidates")
 async def search_candidates(request: SearchRequest, user: dict = Depends(get_current_user)):
@@ -150,7 +173,81 @@ async def get_candidate(user_id: int, user: dict = Depends(get_current_user)):
     except Exception as e:
         return {"status": "error", "reason": str(e)}
 
+@app.post("/job_postings")
+def create_job_posting(payload: JobPostingCreate, user: dict= Depends(get_current_user), db: Session = Depends(get_db)):
+    if user["role"] != "hr":
+        raise HTTPException(status_code = status.HTTP_403_FORBIDDEN, detail = "Only HR can create job postings")
+    posting = JobPosting(
+        hr_id=user["user_id"],
+        company_name=payload.company_name,
+        role_title=payload.role_title,
+        department=payload.department,
+        description=payload.description,
+        location=payload.location,
+        salary_range=payload.salary_range,
+        apply_link=payload.apply_link,
+    )
 
+
+    db.add(posting)
+    db.commit()
+    db.refresh(posting)
+
+    return {
+        "status": "success",
+        "job_posting_id": posting.id
+    }
+
+@app.post("/get_job_postings")
+def get_job_postings(user: dict= Depends(get_current_user), db: Session = Depends(get_db)):    
+    if user["role"] != "hr":
+        raise HTTPException(status= status.HTTP_403_FORBIDDEN, detail= "Only HR can get job postings")
+    job_postings= db.query(JobPosting).filter(JobPosting.hr_id ==user["user_id"]).all()
+
+    return {
+            "status": "success",
+            "job_postings": [
+                {
+                    "id": job_posting.id,
+                    "company_name": job_posting.company_name,
+                    "role_title": job_posting.role_title,
+                    "department": job_posting.department,
+                    "description": job_posting.description,
+                    "location": job_posting.location,
+                    "salary_range": job_posting.salary_range,
+                    "is_active": job_posting.is_active,
+                    "created_at": job_posting.created_at
+                }
+            for job_posting in job_postings
+        ]
+    }
+
+@app.get("/job_postings/{job_id}")
+def get_job_posting(job_id: int , user: dict= Depends(get_current_user), db: Session = Depends(get_db)):
+    posting = db.query(JobPosting).filter(JobPosting.id==job_id).first()
+    if not posting:
+        raise HTTPException(status = status.HTTP_404_NOT_FOUND, detail = "Job posting not found")
+    return {
+        "status": "success",
+        "id": posting.id,
+        "company_name": posting.company_name,
+        "role_title": posting.role_title,
+        "department": posting.department,
+        "description": posting.description,
+        "location": posting.location,
+        "salary_range": posting.salary_range,
+        "apply_link": posting.apply_link,
+        "created_at": posting.created_at,
+    }
+
+#save candidates
+
+
+
+#outreach emails
+
+
+    
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, port=3001)
