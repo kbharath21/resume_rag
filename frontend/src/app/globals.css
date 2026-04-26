@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f3f2ef;
+  --foreground: #000000;
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --border: #d4d2cf;
+  --input: #ffffff;
+  --input-border: #00000066;
+  --primary: #7c3aed;
+  --primary-hover: #6d28d9;
+  --primary-foreground: #ffffff;
+  --secondary: #f3f2ef;
+  --muted: #666666;
+  --accent: #ebe7ff;
+}
+
+.dark {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #1b1f23;
+  --card-foreground: #ffffff;
+  --border: #38434f;
+  --input: #1b1f23;
+  --input-border: #ffffff66;
+  --primary: #8b5cf6;
+  --primary-hover: #7c3aed;
+  --primary-foreground: #ffffff;
+  --secondary: #1b1f23;
+  --muted: #b0b0b0;
+  --accent: #2d1b4e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, system-ui, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', 'Fira Sans', Ubuntu, Oxygen, 'Oxygen Sans', Cantarell, 'Droid Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Lucida Grande', Helvetica, Arial, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}

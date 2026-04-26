@@ -16,10 +16,20 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     password = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)  
+    created_at = Column(DateTime, default=datetime.utcnow)
     role = Column(Enum(UserRole), nullable=False, default=UserRole.candidate)
-    refresh_tokens = relationship("RefreshToken", back_populates="user")
     is_shadow = Column(Boolean, default=False)
+    name = Column(String(255), nullable=True)
+    phone = Column(String(50), nullable=True)
+    refresh_tokens = relationship("RefreshToken", back_populates="user") 
+    is_verified = Column(Boolean, default=False)
+    otp_code = Column(String, nullable=True)
+    otp_expires_at = Column(DateTime, nullable=True)
+    
+    # Candidate profile fields for HR filtering
+    notice_period = Column(String(50), nullable=True)  # "immediate", "1_month", "2_months", "3_months", "negotiable"
+    location = Column(String(255), nullable=True)  # City/region
+
 
 
 class RefreshToken(Base):
@@ -85,4 +95,4 @@ class OutreachEmail(Base):
     opened_at = Column(DateTime, nullable=True)
 
     job_posting = relationship("JobPosting", back_populates="outreach_emails")
-    candidate = relationship("User", foreign_keys=[candidate_user_id])
+    candidate = relationship("User", foreign_keys=[candidate_user_id])   
