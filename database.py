@@ -11,7 +11,14 @@ if _env_path.is_file():
 
 DATABASE_URL = os.environ["DATABASE_URL"]
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    pool_size=10,  
+    max_overflow=20, 
+    pool_timeout=30,  
+    pool_recycle=3600  
+)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

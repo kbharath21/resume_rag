@@ -6,12 +6,14 @@ from jose import jwt, JWTError
 from models import UserRole
 from datetime import datetime
 from database import get_db
-from models import User, UserRole, RefreshToken
+from models import User, UserRole, RefreshToken, UserPreferences
+from enum import Enum  
 from redis_client import redis_client
-from auth_utils import hash_password, verify_password, create_access_token, create_refresh_token, SECRET_KEY, ALGORITHM, set_user_otp, send_otp_email
+from auth_utils import hash_password, verify_password, create_access_token, create_refresh_token, SECRET_KEY, ALGORITHM, set_user_otp, send_otp_email, validate_password_strength, verify_otp
 import uuid
 from datetime import datetime, timedelta
 from pydantic import BaseModel, EmailStr
+from enum import Enum
 
 class LoginRequest(BaseModel):
     email: str
@@ -34,9 +36,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:4000", "http://127.0.0.1:4000"],  # Frontend URLs
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],  
+    allow_headers=["Content-Type", "Authorization"],
+    expose_headers=["Content-Length"],
+    max_age=600,  
 )
 
 class UpdateProfileRequest(BaseModel):
@@ -46,6 +49,30 @@ class UpdateProfileRequest(BaseModel):
     location: str | None = None  # New field
     current_password: str | None = None
     new_password: str | None = None
+
+class TableName(str, Enum):
+    search_results = "search_results"
+    saved_candidates = "saved_candidates"
+    job_postings = "job_postings"
+    my_applications = "my_applications"
+
+class SortDirection(str, Enum):
+    asc = "asc"
+    desc = "desc"
+
+class UpdateTablePreferenceRequest(BaseModel):
+    table: TableName
+    sort_by: str
+    sort_direction: SortDirection
+    filters: dict
+    items_per_page: int
+    current_page: int
+
+class UpdateGlobalPreferenceRequest(BaseModel):
+    theme: str | None = None
+    date_format: str | None = None
+    timezone: str | None = None
+
 
 http_bearer = HTTPBearer()
 
@@ -77,6 +104,10 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     if existing_user:
         raise HTTPException(status_code=400, detail="User already exists")
 
+    is_valid, message = validate_password_strength(payload.password)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=message)
+
     hashed_password = hash_password(payload.password)
 
     new_user = User(
@@ -105,12 +136,16 @@ def verify_account(payload: VerifyOTPRequest, db: Session = Depends(get_db)):
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-        
-    if user.otp_code != payload.code or datetime.utcnow() > user.otp_expires_at:
+    
+    if not verify_otp(user.otp_code, payload.code, user.otp_expires_at):
         raise HTTPException(status_code=401, detail="Invalid or expired code")
     
     user.is_verified = True
     user.otp_code = None 
+
+    user_preferences = UserPreferences(user_id=user.id)
+    db.add(user_preferences)
+
     db.commit()
     
     return {"status": "success", "message": "Account verified. You may now login."}
@@ -163,8 +198,9 @@ def update_profile(
         if not verify_password(payload.current_password, db_user.password):
             raise HTTPException(status_code=400, detail="Current password is incorrect")
         
-        if len(payload.new_password) < 8:
-            raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+        is_valid, message = validate_password_strength(payload.new_password)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=message)
         
         db_user.password = hash_password(payload.new_password)
     
@@ -233,8 +269,8 @@ def verify_2fa_login(payload: VerifyOTPRequest, db: Session = Depends(get_db)):
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-        
-    if user.otp_code != payload.code or datetime.utcnow() > user.otp_expires_at:
+    
+    if not verify_otp(user.otp_code, payload.code, user.otp_expires_at):
         raise HTTPException(status_code=401, detail="Invalid or expired 2FA code")
 
     user.otp_code = None
@@ -305,6 +341,77 @@ def refresh(refresh_token: str, db: Session = Depends(get_db)):
         "access_token": new_access_token,
         "refresh_token": new_refresh_token,
         "token_type": "bearer"
+    }
+
+#refresh
+
+@app.get("/preferences")
+def get_preferences(
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    user_pref = db.query(UserPreferences).filter_by(user_id=user["user_id"]).first()
+        
+    if not user_pref:
+        raise HTTPException(status_code=404, detail="Preferences not found")
+    
+    return user_pref
+
+@app.patch("/preferences/table")
+def update_table_preferences(
+    payload: UpdateTablePreferenceRequest,
+    user: dict = Depends(get_current_user),
+    db: Session= Depends(get_db)
+):
+    pref = db.query(UserPreferences).filter(UserPreferences.user_id == user["user_id"]).first()
+
+    if not pref:
+        raise HTTPException(status_code = 404, detail = "Preferences not found")
+
+    table_prefs  = pref.table_preferences.copy()
+    table_prefs[payload.table] = {
+        "sort_by": payload.sort_by,
+        "sort_direction": payload.sort_direction,
+        "filters": payload.filters,
+        "items_per_page": payload.items_per_page,
+        "current_page": payload.current_page
+    }
+
+    pref.table_preferences = table_prefs
+    db.commit()
+    db.refresh(pref)
+
+    return {
+        "message": f"Preferences updated for {payload.table}",
+        "table_preferences": pref.table_preferences[payload.table]
+    }
+
+@app.patch("/preferences/global")
+def update_global_preferences(
+    payload: UpdateGlobalPreferenceRequest,
+    user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    pref = db.query(UserPreferences).filter(UserPreferences.user_id == user["user_id"]).first()
+
+    if not pref:
+        raise HTTPException(status_code=404, detail="Preferences not found")
+
+    if payload.theme is not None:
+        pref.theme = payload.theme
+    if payload.date_format is not None:
+        pref.date_format = payload.date_format
+    if payload.timezone is not None:
+        pref.timezone = payload.timezone
+
+    db.commit()
+    db.refresh(pref)
+
+    return {
+        "message": "Global preferences updated",
+        "theme": pref.theme,
+        "date_format": pref.date_format,
+        "timezone": pref.timezone
     }
 
 

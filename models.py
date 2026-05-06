@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
 from sqlalchemy import Column, Integer, String, DateTime, Enum, Boolean, ForeignKey, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 
 class UserRole(str, enum.Enum):
     candidate = "candidate"
@@ -29,7 +30,8 @@ class User(Base):
     # Candidate profile fields for HR filtering
     notice_period = Column(String(50), nullable=True)  # "immediate", "1_month", "2_months", "3_months", "negotiable"
     location = Column(String(255), nullable=True)  # City/region
-
+    
+    preferences = relationship("UserPreferences", back_populates="user", uselist=False)
 
 
 class RefreshToken(Base):
@@ -96,3 +98,52 @@ class OutreachEmail(Base):
 
     job_posting = relationship("JobPosting", back_populates="outreach_emails")
     candidate = relationship("User", foreign_keys=[candidate_user_id])   
+    
+class UserPreferences(Base):
+    __tablename__ = "user_preferences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+
+    theme = Column(String(10), default="light")
+    date_format = Column(String(20), default="MM/DD/YYYY")
+    timezone = Column(String(50), default="UTC")
+
+    table_preferences= Column(JSONB , default = lambda: {
+    "search_results": {
+        "sort_by": "score",
+        "sort_direction": "desc",
+        "filters": {},
+        "items_per_page": 10,
+        "current_page": 1
+    },
+    "saved_candidates": {
+        "sort_by": "saved_at",
+        "sort_direction": "desc",
+        "filters": {},
+        "items_per_page": 10,
+        "current_page": 1
+    },
+    "job_postings": {
+        "sort_by": "created_at",
+        "sort_direction": "desc",
+        "filters": {"is_active": True},
+        "items_per_page": 10,
+        "current_page": 1
+    },
+    "my_applications": {
+        "sort_by": "sent_at",
+        "sort_direction": "desc",
+        "filters": {},
+        "items_per_page": 10,
+        "current_page": 1
+    }
+    })
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="preferences")
+
+
+

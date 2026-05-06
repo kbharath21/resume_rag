@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { searchApi } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { useTablePreferences } from '@/hooks/useTablePreferences';
+import { DataTable, Pagination, Column } from '@/components/ui/DataTable';
 
 interface SavedCandidate {
   id: number;
@@ -30,49 +32,70 @@ interface CandidateResume {
   full_resume_text: string;
 }
 
+interface JobPosting {
+  id: number;
+  company_name: string;
+  role_title: string;
+  is_active: boolean;
+}
+
+interface ApiError {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+}
+
 export default function SavedCandidatesPage() {
   const [candidates, setCandidates] = useState<SavedCandidate[]>([]);
+  const [total, setTotal] = useState(0);
+  const [pages, setPages] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCandidates, setSelectedCandidates] = useState<Set<number>>(new Set());
   const [showOutreachModal, setShowOutreachModal] = useState(false);
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [selectedResume, setSelectedResume] = useState<CandidateResume | null>(null);
-  const [isLoadingResume, setIsLoadingResume] = useState(false);
-  const [jobs, setJobs] = useState<Array<{ id: number; company_name: string; role_title: string }>>([]);
+  const [jobs, setJobs] = useState<JobPosting[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [isSendingOutreach, setIsSendingOutreach] = useState(false);
-
-  useEffect(() => {
-    fetchSavedCandidates();
-    fetchJobs();
-  }, []);
+  const { preferences, isLoading: prefsLoading, setCurrentPage, setItemsPerPage, updatePreferences } = useTablePreferences('saved_candidates');
 
   const fetchSavedCandidates = async () => {
     try {
       setIsLoading(true);
       const response = await searchApi.get('/saved_candidates');
       setCandidates(response.data.candidates || []);
-    } catch (error) {
-      console.error('Failed to fetch saved candidates:', error);
+      setTotal(response.data.total || 0);
+      setPages(response.data.pages || 0);
+    } catch {
       toast.error('Failed to load saved candidates');
     } finally {
       setIsLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (!prefsLoading) {
+      fetchSavedCandidates();
+    }
+  }, [preferences.current_page, preferences.sort_by, preferences.sort_direction, preferences.items_per_page, prefsLoading]);
+
+  useEffect(() => {
+    fetchJobs();
+  }, []);
+
   const fetchJobs = async () => {
     try {
       const response = await searchApi.post('/get_job_postings', {});
-      const activeJobs = (response.data.job_postings || []).filter((job: any) => job.is_active);
+      const activeJobs = (response.data.job_postings || []).filter((job: JobPosting) => job.is_active);
       setJobs(activeJobs);
-    } catch (error) {
-      console.error('Failed to fetch jobs:', error);
+    } catch {
     }
   };
 
   const fetchCandidateResume = async (candidateUserId: number) => {
     try {
-      setIsLoadingResume(true);
       const response = await searchApi.get(`/get_candidate/${candidateUserId}`);
       if (response.data.status === 'success') {
         setSelectedResume(response.data);
@@ -80,11 +103,8 @@ export default function SavedCandidatesPage() {
       } else {
         toast.error('Resume not found for this candidate');
       }
-    } catch (error) {
-      console.error('Failed to fetch resume:', error);
+    } catch {
       toast.error('Failed to load candidate resume');
-    } finally {
-      setIsLoadingResume(false);
     }
   };
 
@@ -112,27 +132,20 @@ export default function SavedCandidatesPage() {
       toast.error('Please select at least one candidate');
       return;
     }
-
     if (!selectedJobId) {
       toast.error('Please select a job posting');
       return;
     }
-
     try {
       setIsSendingOutreach(true);
-      
-      // Map selected saved_candidate IDs to actual candidate_user_ids
       const candidateUserIds = candidates
         .filter(c => selectedCandidates.has(c.id))
         .map(c => c.candidate_user_id);
-      
       const payload = {
         candidate_ids: candidateUserIds,
         job_posting_id: selectedJobId,
       };
-
       const response = await searchApi.post('/send_outreach', payload);
-
       if (response.data.status === 'done') {
         const results = response.data.results;
         toast.success(
@@ -143,13 +156,123 @@ export default function SavedCandidatesPage() {
         setSelectedJobId(null);
         await fetchSavedCandidates();
       }
-    } catch (error: any) {
-      console.error('Failed to send outreach:', error);
-      toast.error(error.response?.data?.detail || 'Failed to send outreach');
+    } catch (error) {
+      const apiError = error as ApiError;
+      toast.error(apiError.response?.data?.detail || 'Failed to send outreach');
     } finally {
       setIsSendingOutreach(false);
     }
   };
+
+  const handleSort = (column: string) => {
+    if (preferences.sort_by === column) {
+      updatePreferences({ sort_direction: preferences.sort_direction === 'asc' ? 'desc' : 'asc' }, true);
+    } else {
+      updatePreferences({ sort_by: column, sort_direction: 'asc' }, true);
+    }
+  };
+
+  const columns: Column<SavedCandidate>[] = [
+    {
+      key: 'select',
+      header: '',
+      render: (candidate) => (
+        <input
+          type="checkbox"
+          checked={selectedCandidates.has(candidate.id)}
+          onChange={() => handleSelectCandidate(candidate.id)}
+          className="rounded border-gray-300"
+        />
+      ),
+    },
+    {
+      key: 'candidate_name',
+      header: 'Name',
+      sortable: true,
+      render: (candidate) => (
+        <button
+          onClick={() => fetchCandidateResume(candidate.candidate_user_id)}
+          className="text-sm font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:underline"
+        >
+          {candidate.candidate_name || 'Unknown'}
+        </button>
+      ),
+    },
+    {
+      key: 'email',
+      header: 'Email',
+      sortable: true,
+      render: (candidate) => (
+        <span className="text-sm text-gray-600 dark:text-gray-400">
+          {candidate.candidate_email || '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'location',
+      header: 'Location',
+      sortable: true,
+      render: (candidate) => (
+        <span className="text-sm text-gray-600 dark:text-gray-400">
+          {candidate.candidate_location || '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'notice_period',
+      header: 'Notice Period',
+      sortable: true,
+      render: (candidate) => (
+        <span className="text-sm text-gray-600 dark:text-gray-400">
+          {candidate.candidate_notice_period ? candidate.candidate_notice_period.replace('_', ' ') : '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'job',
+      header: 'Job',
+      render: (candidate) => (
+        <span className="text-sm text-gray-600 dark:text-gray-400">
+          {candidate.job_title ? (
+            <div>
+              <div className="font-medium text-gray-900 dark:text-white">{candidate.job_title}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">{candidate.company_name}</div>
+            </div>
+          ) : (
+            '-'
+          )}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      render: (candidate) => (
+        <span
+          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+            candidate.status === 'emailed'
+              ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
+              : candidate.status === 'interviewed'
+              ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+          }`}
+        >
+          {candidate.status}
+        </span>
+      ),
+    },
+    {
+      key: 'saved_at',
+      header: 'Saved',
+      sortable: true,
+      render: (candidate) => (
+        <span className="text-sm text-gray-600 dark:text-gray-400">
+          {new Date(candidate.saved_at).toLocaleDateString()}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <DashboardLayout>
@@ -171,119 +294,25 @@ export default function SavedCandidatesPage() {
           )}
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />
-          </div>
-        ) : candidates.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700 p-12 text-center">
-            <p className="text-gray-500 dark:text-gray-400 text-lg">No saved candidates yet</p>
-            <p className="text-gray-400 dark:text-gray-500 mt-2">Search for candidates and save them to your shortlist</p>
-          </div>
-        ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-300 dark:border-gray-700">
-                  <tr>
-                    <th className="px-4 py-3 text-left">
-                      <input
-                        type="checkbox"
-                        checked={selectedCandidates.size === candidates.length && candidates.length > 0}
-                        onChange={handleSelectAll}
-                        className="rounded border-gray-300"
-                      />
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">
-                      Name
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">
-                      Email
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">
-                      Location
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">
-                      Notice Period
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">
-                      Job
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {candidates.map((candidate) => (
-                    <tr key={candidate.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                      <td className="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedCandidates.has(candidate.id)}
-                          onChange={() => handleSelectCandidate(candidate.id)}
-                          className="rounded border-gray-300"
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => fetchCandidateResume(candidate.candidate_user_id)}
-                          className="text-sm font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:underline"
-                        >
-                          {candidate.candidate_name || 'Unknown'}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                        {candidate.candidate_email || '-'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                        {candidate.candidate_location || '-'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                        {candidate.candidate_notice_period ? candidate.candidate_notice_period.replace('_', ' ') : '-'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                        {candidate.job_title ? (
-                          <div>
-                            <div className="font-medium text-gray-900 dark:text-white">{candidate.job_title}</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">{candidate.company_name}</div>
-                          </div>
-                        ) : (
-                          '-'
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            candidate.status === 'emailed'
-                              ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
-                              : candidate.status === 'interviewed'
-                              ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300'
-                              : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
-                          }`}
-                        >
-                          {candidate.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => fetchCandidateResume(candidate.candidate_user_id)}
-                          disabled={isLoadingResume}
-                          className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium disabled:opacity-50"
-                        >
-                          View Resume
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        <DataTable
+          columns={columns}
+          data={candidates}
+          keyExtractor={(candidate) => candidate.id}
+          sortBy={preferences.sort_by}
+          sortDirection={preferences.sort_direction}
+          onSort={handleSort}
+          isLoading={isLoading || prefsLoading}
+          emptyMessage="No saved candidates yet"
+        />
+
+        <Pagination
+          currentPage={preferences.current_page}
+          totalPages={pages}
+          totalItems={total}
+          itemsPerPage={preferences.items_per_page}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+        />
 
         {showOutreachModal && (
           <OutreachModal
@@ -313,7 +342,7 @@ export default function SavedCandidatesPage() {
 
 interface OutreachModalProps {
   selectedCount: number;
-  jobs: Array<{ id: number; company_name: string; role_title: string }>;
+  jobs: JobPosting[];
   selectedJobId: number | null;
   onJobSelect: (jobId: number) => void;
   onSend: () => void;
@@ -336,14 +365,12 @@ function OutreachModal({
         <div className="border-b border-gray-300 dark:border-gray-700 px-6 py-4">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Send Outreach</h2>
         </div>
-
         <div className="p-6 space-y-4">
           <div>
             <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">
               Sending to {selectedCount} candidate{selectedCount !== 1 ? 's' : ''}
             </p>
           </div>
-
           <div>
             <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-1">
               Select Job Posting
@@ -362,11 +389,9 @@ function OutreachModal({
               ))}
             </select>
           </div>
-
           {jobs.length === 0 && (
             <p className="text-sm text-gray-500 dark:text-gray-400">No active job postings available</p>
           )}
-
           <div className="flex gap-3 justify-end pt-4 border-t border-gray-300 dark:border-gray-700">
             <button
               onClick={onClose}
@@ -407,7 +432,6 @@ function ResumeModal({ resume, onClose }: ResumeModalProps) {
             ×
           </button>
         </div>
-
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4 pb-4 border-b border-gray-200 dark:border-gray-700">
@@ -420,12 +444,10 @@ function ResumeModal({ resume, onClose }: ResumeModalProps) {
                 <p className="text-base text-gray-900 dark:text-white">{resume.phone || '-'}</p>
               </div>
             </div>
-
             <div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Summary</h3>
               <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{resume.summary}</p>
             </div>
-
             <div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Full Resume</h3>
               <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap bg-gray-50 dark:bg-gray-900 p-4 rounded border border-gray-200 dark:border-gray-700">
@@ -434,7 +456,6 @@ function ResumeModal({ resume, onClose }: ResumeModalProps) {
             </div>
           </div>
         </div>
-
         <div className="border-t border-gray-300 dark:border-gray-700 px-6 py-4 flex justify-end">
           <button
             onClick={onClose}

@@ -20,6 +20,8 @@ from sqlalchemy.orm import Session
 from database import get_db
 load_dotenv()
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form
+import re
+from pathlib import Path
 
 sentry_sdk.init(
     dsn=os.getenv("SENTRY_DSN", ""),
@@ -60,12 +62,53 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:4000", "http://127.0.0.1:4000"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
+    expose_headers=["Content-Length"],
+    max_age=600,
+) 
 
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+ALLOWED_FILE_EXTENSIONS = {'.pdf', '.doc', '.docx', '.txt'}
+ALLOWED_MIME_TYPES = {
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/plain'
+}
+BLOCKED_URL_PATTERNS = [
+    r'localhost',
+    r'127\.0\.0\.',
+    r'0\.0\.0\.0',
+    r'10\.\d+\.\d+\.\d+',
+    r'172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+',
+    r'192\.168\.\d+\.\d+',
+    r'169\.254\.\d+\.\d+',
+    r'metadata\.google\.internal',
+    r'169\.254\.169\.254',
+]
+
+def sanitize_filename(filename: str) -> str:
+    filename = os.path.basename(filename)
+    filename = re.sub(r'[^\w\s\-\.]', '', filename)
+    return filename[:255]
+
+def validate_file_extension(filename: str) -> bool:
+    ext = Path(filename).suffix.lower()
+    return ext in ALLOWED_FILE_EXTENSIONS
+
+def validate_url_safety(url: str) -> bool:
+    parsed = urlparse(url)
+    if not all([parsed.scheme, parsed.netloc]):
+        return False
+    if parsed.scheme not in ['http', 'https']:
+        return False
+    hostname = parsed.netloc.split(':')[0].lower()
+    for pattern in BLOCKED_URL_PATTERNS:
+        if re.search(pattern, hostname, re.IGNORECASE):
+            return False
+    return True
 
 class ResumeInput(BaseModel):
     name: str
@@ -93,16 +136,11 @@ async def ingest_resume(payload: ResumeInput, user: dict = Depends(get_current_u
     if not payload.resume_url:
         return {"status": "error", "reason": "Missing resume URL"}
 
-    try:
-        parsed = urlparse(payload.resume_url)
-        if not all([parsed.scheme, parsed.netloc]):
-            return {"status": "error", "reason": "Invalid URL format"}
-    except Exception:
-        return {"status": "error", "reason": "Invalid URL format"}
+    if not validate_url_safety(payload.resume_url):
+        return {"status": "error", "reason": "Invalid or blocked URL"}
 
     try:
         is_success, extracted, raw_text = await resume_processesors.process_resume_with_ocr_fallback(payload.resume_url)
-        print("primary extraction success:", is_success)
 
         use_ocr = False
 
@@ -114,10 +152,8 @@ async def ingest_resume(payload: ResumeInput, user: dict = Depends(get_current_u
             use_ocr = True
 
         if use_ocr:
-            print("Switching to OCR fallback")
             try:
                 ocr_success, ocr_extracted, ocr_raw = await r.process_resume_from_url(payload.resume_url)
-                print("ocr success:", ocr_success)
 
                 ocr_valid = (
                     ocr_success and
@@ -133,7 +169,7 @@ async def ingest_resume(payload: ResumeInput, user: dict = Depends(get_current_u
                 else:
                     try:
                         with open(INVALID_RESUMES_LOG_PATH, "a", encoding="utf-8") as f:
-                            f.write(f"user_id={user_id} url={payload.resume_url}\n")
+                            f.write(f"user_id={user_id}\n")
                     except Exception:
                         pass
                     return {"status": "skipped", "reason": "Both extractors failed"}
@@ -141,7 +177,7 @@ async def ingest_resume(payload: ResumeInput, user: dict = Depends(get_current_u
             except Exception:
                 try:
                     with open(INVALID_RESUMES_LOG_PATH, "a", encoding="utf-8") as f:
-                        f.write(f"user_id={user_id} url={payload.resume_url}\n")
+                        f.write(f"user_id={user_id}\n")
                 except Exception:
                     pass
                 return {"status": "skipped", "reason": "OCR fallback failed"}
@@ -158,12 +194,12 @@ async def ingest_resume(payload: ResumeInput, user: dict = Depends(get_current_u
                 )
                 return {"status": "success", "user_id": user_id}
 
-            except Exception as e:
-                return {"status": "error", "reason": f"Storage failed: {str(e)}"}
+            except Exception:
+                return {"status": "error", "reason": "Storage failed"}
         else:
             try:
                 with open(INVALID_RESUMES_LOG_PATH, "a", encoding="utf-8") as f:
-                    f.write(f"user_id={user_id} url={payload.resume_url}\n")
+                    f.write(f"user_id={user_id}\n")
             except Exception:
                 pass
             return {"status": "failed", "user_id": user_id}
@@ -171,9 +207,8 @@ async def ingest_resume(payload: ResumeInput, user: dict = Depends(get_current_u
     except Exception as e:
         with sentry_sdk.push_scope() as scope:
             scope.set_extra("user_id", user_id)
-            scope.set_extra("resume_url", payload.resume_url)
             sentry_sdk.capture_exception(e)
-        return {"status": "error", "reason": str(e)}
+        return {"status": "error", "reason": "Processing failed"}
 
 
 @app.post("/ingest_resume_file")
@@ -188,6 +223,11 @@ async def ingest_resume_file(
         raise HTTPException(status_code=403, detail="Only candidates can upload resumes")
 
     user_id = user["user_id"]
+
+    safe_filename = sanitize_filename(file.filename or "resume.pdf")
+    
+    if not validate_file_extension(safe_filename):
+        return {"status": "error", "reason": "Invalid file type. Only PDF, DOC, DOCX, TXT allowed"}
 
     file_bytes = await file.read()
 
@@ -207,7 +247,7 @@ async def ingest_resume_file(
         if not is_success or not extracted or INVALID_CONTENT_MARKER in extracted or INSUFFICIENT_RESUME_MESSAGE in extracted.strip():
             try:
                 with open(INVALID_RESUMES_LOG_PATH, "a", encoding="utf-8") as f:
-                    f.write(f"user_id={user_id} filename={file.filename}\n")
+                    f.write(f"user_id={user_id}\n")
             except Exception:
                 pass
 
@@ -224,8 +264,8 @@ async def ingest_resume_file(
 
         return {"status": "success", "user_id": user_id}
 
-    except Exception as e:
-        return {"status": "error", "reason": str(e)}
+    except Exception:
+        return {"status": "error", "reason": "Processing failed"}
 
 @app.post("/delete_resume")
 async def delete_resume(item: DeleteRequest, user: dict = Depends(get_current_user)):
@@ -241,19 +281,23 @@ async def delete_resume(item: DeleteRequest, user: dict = Depends(get_current_us
         )
 
         if not results:
-            return {"status": "not_found", "message": f"No entry found with id {item.id}"}
+            return {"status": "not_found", "message": "Resume not found"}
 
         collection.delete(expr=f"id == {item.id}")
-        return {"status": "success", "message": f"Deleted record with id {item.id}"}
+        return {"status": "success", "message": "Resume deleted"}
 
-    except Exception as e:
-        return {"status": "error", "reason": str(e)}
+    except Exception:
+        return {"status": "error", "reason": "Delete failed"}
 
 
 @app.post("/update_resume")
 async def update_resume(item: ResumeUpdateInput, user: dict = Depends(get_current_user)):
     if user["role"] != "candidate":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only candidates can update resumes")
+    
+    if not validate_url_safety(item.resume_url):
+        return {"status": "error", "reason": "Invalid or blocked URL"}
+    
     body = {
         "resume_url": item.resume_url,
         "name": "",
@@ -262,14 +306,17 @@ async def update_resume(item: ResumeUpdateInput, user: dict = Depends(get_curren
     }
     api_url = "http://127.0.0.1:3000/ingest_resume"
     response = requests.post(api_url, json=body)
-    print(f"update_resume response: {response.status_code} {response.text}")
 
 @app.post("/shadow_mode")
 async def toggle_shadow(payload: ShadowToggle, user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     if user["role"] != "candidate":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only candidates can toggle shadow mode")
 
-    db_user= db.query(User).filter(User.id == user["user_id"]).first()
+    user_id = user['user_id']
+    if not isinstance(user_id, int) or user_id <= 0:
+        raise HTTPException(status_code=400, detail="Invalid user_id in token")
+
+    db_user= db.query(User).filter(User.id == user_id).first()
     db_user.is_shadow = payload.enable_shadow
     db.commit()
 

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { searchApi } from '@/lib/api';
 import toast from 'react-hot-toast';
+import { useTablePreferences } from '@/hooks/useTablePreferences';
 
 interface Candidate {
   user_id: number;
@@ -11,7 +12,8 @@ interface Candidate {
   email: string;
   phone: string;
   summary: string;
-  score: number;
+  cosine_score: number;
+  reranker_score: number;
 }
 
 interface CandidateDetailModalProps {
@@ -27,8 +29,12 @@ export default function SearchPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  
+  // Use table preferences hook - only for pagination since Milvus returns results sorted by relevance
+  const { preferences, setCurrentPage } = useTablePreferences('search_results');
+  
+  const currentPage = preferences?.current_page || 1;
+  const itemsPerPage = preferences?.items_per_page || 10;
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +46,7 @@ export default function SearchPage() {
 
     try {
       setIsSearching(true);
-      setCurrentPage(1);
+      setCurrentPage(1); // Reset to page 1 on new search
       const response = await searchApi.post('/search_candidates', {
         query: query.trim(),
         limit: 100,
@@ -49,7 +55,7 @@ export default function SearchPage() {
       if (response.data.status === 'success') {
         setResults(response.data.candidates || []);
         if (response.data.candidates.length === 0) {
-          toast.info('No candidates found matching your query');
+          toast.error('No candidates found matching your query');
         } else {
           toast.success(`Found ${response.data.candidates.length} candidates`);
         }
@@ -74,7 +80,7 @@ export default function SearchPage() {
       console.error('Failed to save candidate:', error);
       const errorMessage = error.response?.data?.detail || error.response?.data?.status;
       if (errorMessage === 'already_saved') {
-        toast.info('Candidate already in your shortlist');
+        toast.error('Candidate already in your shortlist');
       } else {
         toast.error('Failed to save candidate');
       }
@@ -143,7 +149,7 @@ export default function SearchPage() {
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-blue-600">
-                        {(candidate.score * 100).toFixed(0)}%
+                        {((candidate.reranker_score + 10) * 5).toFixed(0)}%
                       </div>
                       <p className="text-xs text-gray-500">Match Score</p>
                     </div>
@@ -260,7 +266,7 @@ function CandidateDetailModal({
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Match Score</p>
               <p className="text-sm font-medium text-blue-600 mt-1">
-                {(candidate.score * 100).toFixed(0)}%
+                {((candidate.reranker_score + 10) * 5).toFixed(0)}%
               </p>
             </div>
           </div>

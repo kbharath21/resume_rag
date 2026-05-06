@@ -17,24 +17,30 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
-from models import JobPosting, SavedCandidate, OutreachEmail, User
+from models import JobPosting, SavedCandidate, OutreachEmail, User, UserPreferences
+from sentence_transformers import CrossEncoder
+from sentence_transformers import CrossEncoder
+
 
 http_bearer = HTTPBearer()
 load_dotenv()
-print("SECRET_KEY loaded:", os.getenv("SECRET_KEY"))
-print("ALGORITHM loaded:", os.getenv("ALGORITHM"))
 main.initialize_connections()
+
+reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+print("✅ Reranker model loaded")
+
+reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
 
 app= FastAPI()
 
-# Add CORS middleware with more permissive settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for now
+    allow_origins=["http://localhost:4000", "http://127.0.0.1:4000"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],  
+    allow_headers=["Content-Type", "Authorization"], 
+    expose_headers=["Content-Length"],
+    max_age=600, 
 )
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -131,7 +137,8 @@ async def search_candidates(request: SearchRequest, user: dict = Depends(get_cur
                 "metric_type":"COSINE",
                 "params":{"nprobe":10}
             },
-            limit = request.limit,
+            # limit = request.limit,
+            limit = 20,
             expr= "is_active == 1",
             output_fields=["user_id", "name", "email", "phone", "summary"]
         )
@@ -145,17 +152,32 @@ async def search_candidates(request: SearchRequest, user: dict = Depends(get_cur
                     "email": hit.entity.get("email"),
                     "phone": hit.entity.get("phone"),
                     "summary": hit.entity.get("summary"),
-                    "score": round(hit.score, 4)
+                    "cosine_score": round(hit.score, 4)
                 })
-                print(f"Found {len(candidates)} candidates")
+        
+        summaries = [c["summary"] for c in candidates]
+        pairs = [[request.query, summary] for summary in summaries]
+        reranker_scores = reranker.predict(pairs)
+        
+        candidates_with_scores = [
+            {
+                **candidate,
+                "reranker_score": float(reranker_scores[i])
+            }
+            for i, candidate in enumerate(candidates)
+        ]
+        
+        candidates_with_scores.sort(key=lambda x: x["reranker_score"], reverse=True)
+        top_5 = candidates_with_scores[:5]
+        
         return {
             "status": "success",
             "query": request.query,
-            "total": len(candidates),
-            "candidates": candidates
+            "total": len(top_5),
+            "candidates": top_5
         }
-    except Exception as e:
-        return {"status":"error", "reason":str(e)}    
+    except Exception:
+        return {"status":"error", "reason":"Search failed"}    
 
 
       
@@ -163,6 +185,10 @@ async def search_candidates(request: SearchRequest, user: dict = Depends(get_cur
 async def get_candidate(user_id: int, user: dict = Depends(get_current_user)):
     if user["role"] != "hr":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only HR can view candidates")
+    
+    if not isinstance(user_id, int) or user_id <= 0:
+        raise HTTPException(status_code=400, detail="Invalid user_id")
+    
     try:
         collection_name = os.getenv("MILVUS_COLLECTION_NAME", "hybrid_search006")
         
@@ -188,13 +214,18 @@ async def get_candidate(user_id: int, user: dict = Depends(get_current_user)):
             "full_resume_text": results[0]["full_resume_text"]
         }
 
-    except Exception as e:
-        return {"status": "error", "reason": str(e)}
+    except Exception:
+        return {"status": "error", "reason": "Candidate retrieval failed"}
 
 @app.get("/my_resume")
 async def get_my_resume(user: dict = Depends(get_current_user)):
     if user["role"] != "candidate":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only candidates can view their own resume")
+    
+    user_id = user['user_id']
+    if not isinstance(user_id, int) or user_id <= 0:
+        raise HTTPException(status_code=400, detail="Invalid user_id in token")
+    
     try:
         collection_name = os.getenv("MILVUS_COLLECTION_NAME", "hybrid_search006")
         
@@ -219,8 +250,8 @@ async def get_my_resume(user: dict = Depends(get_current_user)):
             "full_resume_text": results[0]["full_resume_text"]
         }
 
-    except Exception as e:
-        return {"status": "error", "reason": str(e)}
+    except Exception:
+        return {"status": "error", "reason": "Resume retrieval failed"}
 
 @app.post("/job_postings")
 def create_job_posting(payload: JobPostingCreate, user: dict= Depends(get_current_user), db: Session = Depends(get_db)):
@@ -249,15 +280,40 @@ def create_job_posting(payload: JobPostingCreate, user: dict= Depends(get_curren
 
 @app.post("/get_job_postings")
 def get_job_postings(user: dict= Depends(get_current_user), db: Session = Depends(get_db)):    
+    user_prefs = db.query(UserPreferences).filter(UserPreferences.user_id == user["user_id"]).first()
+    table_prefs = user_prefs.table_preferences.get("job_postings") if user_prefs else {}
+    sort_by = table_prefs.get("sort_by", "created_at")
+    sort_direction = table_prefs.get("sort_direction", "desc")
+    filters = table_prefs.get("filters", {})
+    items_per_page = table_prefs.get("items_per_page", 10)
+    current_page = table_prefs.get("current_page", 1)
     if user["role"] == "hr":
-        job_postings = db.query(JobPosting).filter(JobPosting.hr_id == user["user_id"]).all()
-    
+        query = db.query(JobPosting).filter(JobPosting.hr_id == user["user_id"])
     elif user["role"] == "candidate":
-        job_postings = db.query(JobPosting).filter(JobPosting.is_active == True).all()
-    
+        query = db.query(JobPosting).filter(JobPosting.is_active == True)
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Role not authorized to view jobs")
-
+    if filters.get("is_active") is not None:
+        query = query.filter(JobPosting.is_active == filters["is_active"])
+    if filters.get("location"):
+        query = query.filter(JobPosting.location == filters["location"])
+    
+    sort_map = {
+        "created_at": JobPosting.created_at,
+        "company_name": JobPosting.company_name,
+        "role_title": JobPosting.role_title,
+        "location": JobPosting.location,
+        "salary_range": JobPosting.salary_range,
+        "is_active": JobPosting.is_active
+    }
+    
+    column = sort_map.get(sort_by)
+    if column is not None:
+        query = query.order_by(column.desc() if sort_direction == "desc" else column.asc())
+    
+    total = query.count()
+    offset = (current_page - 1) * items_per_page
+    job_postings = query.offset(offset).limit(items_per_page).all()
     return {
             "status": "success",
             "job_postings": [
@@ -274,7 +330,10 @@ def get_job_postings(user: dict= Depends(get_current_user), db: Session = Depend
                     "created_at": job_posting.created_at
                 }
             for job_posting in job_postings
-        ]
+        ],
+        "total": total,
+        "page": current_page,
+        "pages": (total + items_per_page - 1) // items_per_page
     }
 
 @app.get("/job_postings/{job_id}")
@@ -301,17 +360,23 @@ def get_job_posting(job_id: int , user: dict= Depends(get_current_user), db: Ses
 def get_my_applications(user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     if user["role"] != "candidate":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only candidates can view their applications")
-
-    outreach_records = db.query(OutreachEmail).filter(
-        OutreachEmail.candidate_user_id == user["user_id"]
-    ).all()
-    
+    user_prefs = db.query(UserPreferences).filter(UserPreferences.user_id == user["user_id"]).first()
+    table_prefs = user_prefs.table_preferences.get("my_applications") if user_prefs else {}
+    sort_by = table_prefs.get("sort_by", "sent_at")
+    sort_direction = table_prefs.get("sort_direction", "desc")
+    items_per_page = table_prefs.get("items_per_page", 10)
+    current_page = table_prefs.get("current_page", 1)
+    query = db.query(OutreachEmail).filter(OutreachEmail.candidate_user_id == user["user_id"])
+    if sort_by == "sent_at":
+        query = query.order_by(OutreachEmail.sent_at.desc() if sort_direction == "desc" else OutreachEmail.sent_at.asc())
+    total = query.count()
+    offset = (current_page - 1) * items_per_page
+    outreach_records = query.offset(offset).limit(items_per_page).all()
     applications = []
     for record in outreach_records:
         job = db.query(JobPosting).filter(JobPosting.id == record.job_posting_id).first()
         if job:
             hr_user = db.query(User).filter(User.id == job.hr_id).first()
-
             applications.append({
                 "id": record.id,
                 "job_posting_id": job.id,
@@ -327,13 +392,11 @@ def get_my_applications(user: dict = Depends(get_current_user), db: Session = De
                 "hr_email": hr_user.email if hr_user else None,
                 "hr_name": hr_user.name if hr_user else None
             })
-
-    # Sort by most recent first
-    applications.sort(key=lambda x: x["contacted_at"], reverse=True)
-    
     return {
         "status": "success",
-        "total": len(applications),
+        "total": total,
+        "page": current_page,
+        "pages": (total + items_per_page - 1) // items_per_page,
         "applications": applications
     }
 
@@ -368,8 +431,40 @@ def save_candidates(payload: SaveCandidateRequest, user: dict= Depends(get_curre
 def get_saved_candidates(user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     if user["role"] != "hr":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only HR can view saved candidates")
-    saved = db.query(SavedCandidate).filter(SavedCandidate.hr_id == user["user_id"]).all()
+    user_prefs = db.query(UserPreferences).filter(UserPreferences.user_id == user["user_id"]).first()
+    table_prefs = user_prefs.table_preferences.get("saved_candidates") if user_prefs else {}
+    sort_by = table_prefs.get("sort_by", "saved_at")
+    sort_direction = table_prefs.get("sort_direction", "desc")
+    filters = table_prefs.get("filters", {})
+    items_per_page = table_prefs.get("items_per_page", 10)
+    current_page = table_prefs.get("current_page", 1)
+    query = db.query(SavedCandidate).filter(SavedCandidate.hr_id == user["user_id"])
     
+    needs_user_join = sort_by in ["candidate_name", "email", "location", "notice_period"] or filters.get("location")
+    if needs_user_join:
+        query = query.join(User, SavedCandidate.candidate_user_id == User.id)
+    
+    if filters.get("status"):
+        query = query.filter(SavedCandidate.status == filters["status"])
+    if filters.get("location"):
+        query = query.filter(User.location == filters["location"])
+    
+    sort_map = {
+        "saved_at": SavedCandidate.saved_at,
+        "candidate_name": User.name,
+        "email": User.email,
+        "location": User.location,
+        "notice_period": User.notice_period,
+        "status": SavedCandidate.status
+    }
+    
+    column = sort_map.get(sort_by)
+    if column is not None:
+        query = query.order_by(column.desc() if sort_direction == "desc" else column.asc())
+    
+    total = query.count()
+    offset = (current_page - 1) * items_per_page
+    saved = query.offset(offset).limit(items_per_page).all()
     result = []
     for s in saved:
         candidate = db.query(User).filter(User.id == s.candidate_user_id).first()
@@ -395,7 +490,10 @@ def get_saved_candidates(user: dict = Depends(get_current_user), db: Session = D
     
     return {
         "status": "success",
-        "candidates": result
+        "candidates": result,
+        "total": total,
+        "page": current_page,
+        "pages": (total + items_per_page - 1) // items_per_page
     }
 
 #outreach emails

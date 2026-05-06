@@ -4,21 +4,52 @@ from datetime import datetime, timedelta
 import os
 import smtplib
 import secrets
+import hashlib
+import re
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 pwd_context = CryptContext(schemes = ["bcrypt"], deprecated="auto" )
 
-SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret-for-local-dev-only")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable is not set. Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\"")
+
 ALGORITHM ="HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 330
 REFRESH_TOKEN_EXPIRE_DAYS=7
 
-def hash_password(password: str):
-    return pwd_context.hash(password.encode("utf-8")[:72]) 
+def validate_password_strength(password: str) -> tuple[bool, str]:
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters"
+    
+    if not re.search(r"[A-Z]", password):
+        return False, "Password must contain at least 1 uppercase letter"
+    
+    if not re.search(r"[a-z]", password):
+        return False, "Password must contain at least 1 lowercase letter"
+    
+    if not re.search(r"\d", password):
+        return False, "Password must contain at least 1 number"
+    
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        return False, "Password must contain at least 1 special character"
+    
+    common_passwords = ["password", "12345678", "qwerty", "abc123", "password123"]
+    if password.lower() in common_passwords:
+        return False, "Password is too common"
+    
+    return True, "Password is strong"
 
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password.encode("utf-8")[:72], hashed_password)
+def hash_password(password: str):
+    if len(password) > 72:
+        password = hashlib.sha256(password.encode("utf-8")).hexdigest()
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str):
+    if len(plain_password) > 72:
+        plain_password = hashlib.sha256(plain_password.encode("utf-8")).hexdigest()
+    return pwd_context.verify(plain_password, hashed_password)
     
 def create_access_token(data: dict):
     to_encode = data.copy()
@@ -41,6 +72,13 @@ def set_user_otp(user, db):
     user.otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
     db.commit()
     return otp
+
+def verify_otp(stored_otp: str | None, provided_otp: str, expires_at: datetime) -> bool:
+    if not stored_otp:
+        return False
+    if datetime.utcnow() > expires_at:
+        return False
+    return secrets.compare_digest(stored_otp, provided_otp)
 
 def send_otp_email(receiver_email: str, otp: str):
     smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
