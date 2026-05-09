@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/Input';
@@ -31,7 +31,7 @@ interface FormErrors {
   submit?: string;
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { setToken } = useAuthStore();
@@ -216,5 +216,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 dark:bg-black flex items-center justify-center"><div className="text-gray-700 dark:text-gray-300">Loading...</div></div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
