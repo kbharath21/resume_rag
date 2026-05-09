@@ -166,12 +166,11 @@ export default function RegisterPage() {
                 I am a <span className="text-red-500">*</span>
               </label>
               <div className="space-y-2">
-                <label className="flex items-center p-3 border rounded cursor-pointer transition-colors"
-                  style={{
-                    borderColor: role === 'candidate' ? '#7c3aed' : (document.documentElement.classList.contains('dark') ? '#4b5563' : '#d1d5db'),
-                    backgroundColor: role === 'candidate' ? (document.documentElement.classList.contains('dark') ? '#2d1b4e' : '#ebe7ff') : 'transparent',
-                  }}
-                >
+                <label className={`flex items-center p-3 border rounded cursor-pointer transition-colors ${
+                  role === 'candidate' 
+                    ? 'border-purple-700 bg-purple-50 dark:bg-purple-950' 
+                    : 'border-gray-300 dark:border-gray-700'
+                }`}>
                   <input
                     type="radio"
                     name="role"
@@ -191,12 +190,11 @@ export default function RegisterPage() {
                   </div>
                 </label>
 
-                <label className="flex items-center p-3 border rounded cursor-pointer transition-colors"
-                  style={{
-                    borderColor: role === 'hr' ? '#7c3aed' : (document.documentElement.classList.contains('dark') ? '#4b5563' : '#d1d5db'),
-                    backgroundColor: role === 'hr' ? (document.documentElement.classList.contains('dark') ? '#2d1b4e' : '#ebe7ff') : 'transparent',
-                  }}
-                >
+                <label className={`flex items-center p-3 border rounded cursor-pointer transition-colors ${
+                  role === 'hr' 
+                    ? 'border-purple-700 bg-purple-50 dark:bg-purple-950' 
+                    : 'border-gray-300 dark:border-gray-700'
+                }`}>
                   <input
                     type="radio"
                     name="role"
