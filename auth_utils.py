@@ -102,7 +102,7 @@ def send_otp_email(receiver_email: str, otp: str):
     message.attach(MIMEText(text, "plain"))
 
     try:
-        server = smtplib.SMTP(smtp_host, 587)
+        server = smtplib.SMTP(smtp_host, 587, timeout=10)
         server.starttls()
         server.login(sender_email, sender_password)
         server.sendmail(sender_email, receiver_email, message.as_string())
