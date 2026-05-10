@@ -42,12 +42,12 @@ def validate_password_strength(password: str) -> tuple[bool, str]:
     return True, "Password is strong"
 
 def hash_password(password: str):
-    password_bytes = password.encode('utf-8')[:72]
-    return pwd_context.hash(password_bytes)
+    password_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+    return pwd_context.hash(password_hash)
 
 def verify_password(plain_password: str, hashed_password: str):
-    password_bytes = plain_password.encode('utf-8')[:72]
-    return pwd_context.verify(password_bytes, hashed_password)
+    password_hash = hashlib.sha256(plain_password.encode('utf-8')).hexdigest()
+    return pwd_context.verify(password_hash, hashed_password)
     
 def create_access_token(data: dict):
     to_encode = data.copy()
