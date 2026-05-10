@@ -1,4 +1,3 @@
-from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
 import os
@@ -6,10 +5,9 @@ import smtplib
 import secrets
 import hashlib
 import re
+import bcrypt
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-
-pwd_context = CryptContext(schemes = ["bcrypt"], deprecated="auto" )
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
@@ -42,12 +40,12 @@ def validate_password_strength(password: str) -> tuple[bool, str]:
     return True, "Password is strong"
 
 def hash_password(password: str):
-    password_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
-    return pwd_context.hash(password_hash)
+    password_hash = hashlib.sha256(password.encode('utf-8')).digest()
+    return bcrypt.hashpw(password_hash, bcrypt.gensalt()).decode('utf-8')
 
 def verify_password(plain_password: str, hashed_password: str):
-    password_hash = hashlib.sha256(plain_password.encode('utf-8')).hexdigest()
-    return pwd_context.verify(password_hash, hashed_password)
+    password_hash = hashlib.sha256(plain_password.encode('utf-8')).digest()
+    return bcrypt.checkpw(password_hash, hashed_password.encode('utf-8'))
     
 def create_access_token(data: dict):
     to_encode = data.copy()
