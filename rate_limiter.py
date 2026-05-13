@@ -44,7 +44,7 @@ def rate_limit(max_requests: int, window_seconds: int):
 def rate_limit_by_email(max_requests: int, window_seconds: int, email_field: str = "email"):
     def decorator(func):
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        def wrapper(*args, **kwargs):
             email = None
             for arg in args:
                 if hasattr(arg, email_field):
@@ -58,7 +58,7 @@ def rate_limit_by_email(max_requests: int, window_seconds: int, email_field: str
                         break
             
             if not email:
-                return await func(*args, **kwargs)
+                return func(*args, **kwargs)
             
             endpoint = func.__name__
             key = f"rate_limit:{endpoint}:{email}"
@@ -75,7 +75,7 @@ def rate_limit_by_email(max_requests: int, window_seconds: int, email_field: str
             pipe.expire(key, window_seconds)
             pipe.execute()
             
-            return await func(*args, **kwargs)
+            return func(*args, **kwargs)
         
         return wrapper
     return decorator
