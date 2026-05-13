@@ -31,39 +31,59 @@ export function Table<T>({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />
+        <div className="animate-spin rounded-full h-12 w-12 border-2 border-purple-600 border-t-transparent" />
       </div>
     );
   }
 
   if (data.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700 p-12 text-center">
-        <p className="text-gray-500 dark:text-gray-400 text-lg">{emptyMessage}</p>
+      <div
+        style={{
+          backgroundColor: 'var(--card)',
+          borderColor: 'var(--border)',
+          color: 'var(--card-foreground)',
+        }}
+        className="rounded-lg border p-12 text-center"
+      >
+        <p style={{ color: 'var(--muted)' }} className="text-base">{emptyMessage}</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700 overflow-hidden">
+    <div
+      style={{
+        backgroundColor: 'var(--card)',
+        borderColor: 'var(--border)',
+      }}
+      className="rounded-lg border overflow-hidden"
+    >
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-300 dark:border-gray-700">
+          <thead
+            style={{
+              backgroundColor: 'var(--table-header)',
+              borderColor: 'var(--border)',
+            }}
+            className="border-b"
+          >
             <tr>
               {columns.map((column) => (
-                <th key={column.key} className="px-4 py-3 text-left">
+                <th key={column.key} className="px-6 py-4 text-left">
                   {column.sortable && onSort ? (
                     <button
                       onClick={() => onSort(column.key)}
-                      className="flex items-center gap-1 text-sm font-semibold text-gray-900 dark:text-white hover:text-purple-600 dark:hover:text-purple-400"
+                      style={{ color: 'var(--foreground)' }}
+                      className="flex items-center gap-2 text-sm font-semibold hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
                     >
                       {column.header}
                       {sortBy === column.key && (
-                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        <span className="text-purple-600 dark:text-purple-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </button>
                   ) : (
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                    <span style={{ color: 'var(--foreground)' }} className="text-sm font-semibold">
                       {column.header}
                     </span>
                   )}
@@ -71,14 +91,28 @@ export function Table<T>({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody
+            style={{
+              borderColor: 'var(--border)',
+            }}
+            className="divide-y"
+          >
             {data.map((item) => (
               <tr
                 key={keyExtractor(item)}
-                className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                style={{
+                  backgroundColor: 'var(--card)',
+                }}
+                className="hover:opacity-80 transition-opacity"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--table-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--card)';
+                }}
               >
                 {columns.map((column) => (
-                  <td key={column.key} className="px-4 py-3">
+                  <td key={column.key} className="px-6 py-4">
                     {column.render(item)}
                   </td>
                 ))}
@@ -120,7 +154,7 @@ export function Pagination({
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+          className="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
         >
           Previous
         </button>
@@ -128,10 +162,10 @@ export function Pagination({
           <button
             key={p}
             onClick={() => onPageChange(p)}
-            className={`px-3 py-1 rounded-lg text-sm font-medium ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               currentPage === p
                 ? 'bg-purple-600 text-white'
-                : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                : 'border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
             }`}
           >
             {p}
@@ -140,7 +174,7 @@ export function Pagination({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+          className="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
         >
           Next
         </button>

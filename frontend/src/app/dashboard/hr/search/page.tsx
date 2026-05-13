@@ -98,25 +98,33 @@ export default function SearchPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Search Candidates</h1>
-          <p className="text-gray-600 mt-1">Find candidates using semantic search</p>
+        <div className="page-header">
+          <h1 className="text-5xl font-extrabold tracking-tight" style={{ color: 'var(--foreground)' }}>Search Candidates</h1>
+          <p className="mt-3 text-lg" style={{ color: 'var(--muted)' }}>Find candidates using semantic search</p>
         </div>
 
-        <form onSubmit={handleSearch} className="bg-white rounded-lg border border-gray-200 p-6">
+        <form onSubmit={handleSearch} className="rounded-lg border p-6" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
           <div className="flex gap-3">
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="e.g., Python developer with 5 years experience in Django and microservices"
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-all"
+              style={{ 
+                backgroundColor: 'var(--input)', 
+                borderColor: 'var(--input-border)',
+                color: 'var(--input-text)'
+              }}
               disabled={isSearching}
             />
             <button
               type="submit"
               disabled={isSearching}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: 'var(--primary)' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--primary-hover)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--primary)'}
             >
               {isSearching ? 'Searching...' : 'Search'}
             </button>
@@ -125,11 +133,11 @@ export default function SearchPage() {
 
         {isSearching ? (
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--primary)' }} />
           </div>
         ) : results.length === 0 ? (
-          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-            <p className="text-gray-500 text-lg">
+          <div className="rounded-lg border p-12 text-center" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+            <p className="text-lg" style={{ color: 'var(--muted)' }}>
               {query ? 'No candidates found' : 'Enter a search query to find candidates'}
             </p>
           </div>
@@ -139,34 +147,41 @@ export default function SearchPage() {
               {paginatedResults.map((candidate) => (
                 <div
                   key={candidate.user_id}
-                  className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                  className="rounded-lg border p-6 hover:shadow-md transition-shadow"
+                  style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900">{candidate.name}</h3>
-                      <p className="text-sm text-gray-600 mt-1">{candidate.email}</p>
-                      <p className="text-sm text-gray-600">{candidate.phone}</p>
+                      <h3 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>{candidate.name}</h3>
+                      <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>{candidate.email}</p>
+                      <p className="text-sm" style={{ color: 'var(--muted)' }}>{candidate.phone}</p>
                     </div>
                     <div className="text-right">
-                      <div className="text-2xl font-bold text-blue-600">
+                      <div className="text-2xl font-bold" style={{ color: 'var(--primary)' }}>
                         {((candidate.reranker_score + 10) * 5).toFixed(0)}%
                       </div>
-                      <p className="text-xs text-gray-500">Match Score</p>
+                      <p className="text-xs" style={{ color: 'var(--muted)' }}>Match Score</p>
                     </div>
                   </div>
 
-                  <p className="text-gray-700 text-sm mb-4 line-clamp-2">{candidate.summary}</p>
+                  <p className="text-sm mb-4 line-clamp-2" style={{ color: 'var(--foreground)' }}>{candidate.summary}</p>
 
                   <div className="flex gap-3">
                     <button
                       onClick={() => setSelectedCandidate(candidate)}
-                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                      className="flex-1 px-4 py-2 border rounded-lg transition-colors font-medium"
+                      style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
                       View Full Resume
                     </button>
                     <button
                       onClick={() => handleSaveCandidate(candidate.user_id)}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      className="flex-1 px-4 py-2 text-white rounded-lg transition-colors font-medium"
+                      style={{ backgroundColor: 'var(--primary)' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--primary-hover)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--primary)'}
                     >
                       Save Candidate
                     </button>
@@ -177,7 +192,7 @@ export default function SearchPage() {
 
             {totalPages > 1 && (
               <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm" style={{ color: 'var(--muted)' }}>
                   Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
                   {Math.min(currentPage * itemsPerPage, results.length)} of {results.length}{' '}
                   candidates
@@ -186,7 +201,10 @@ export default function SearchPage() {
                   <button
                     onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-3 py-1 border rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                    onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--accent)')}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
                     Previous
                   </button>
@@ -195,11 +213,22 @@ export default function SearchPage() {
                       <button
                         key={page}
                         onClick={() => setCurrentPage(page)}
-                        className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                        className="px-3 py-1 rounded-lg text-sm font-medium transition-colors"
+                        style={
                           currentPage === page
-                            ? 'bg-blue-600 text-white'
-                            : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                        }`}
+                            ? { backgroundColor: 'var(--primary)', color: 'white' }
+                            : { borderWidth: '1px', borderColor: 'var(--border)', color: 'var(--foreground)' }
+                        }
+                        onMouseEnter={(e) => {
+                          if (currentPage !== page) {
+                            e.currentTarget.style.backgroundColor = 'var(--accent)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (currentPage !== page) {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }
+                        }}
                       >
                         {page}
                       </button>
@@ -208,7 +237,10 @@ export default function SearchPage() {
                   <button
                     onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-1 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-3 py-1 border rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                    onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--accent)')}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
                     Next
                   </button>
@@ -241,13 +273,16 @@ function CandidateDetailModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-900">{candidate.name}</h2>
+      <div className="rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--card)' }}>
+        <div className="sticky top-0 border-b px-6 py-4 flex items-center justify-between" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+          <h2 className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>{candidate.name}</h2>
           <button
             onClick={onClose}
             disabled={isSaving}
-            className="text-gray-500 hover:text-gray-700 text-2xl leading-none disabled:opacity-50"
+            className="text-2xl leading-none disabled:opacity-50 transition-colors"
+            style={{ color: 'var(--muted)' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--foreground)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--muted)'}
           >
             ×
           </button>
@@ -256,40 +291,46 @@ function CandidateDetailModal({
         <div className="p-6 space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Email</p>
-              <p className="text-sm font-medium text-gray-900 mt-1">{candidate.email}</p>
+              <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Email</p>
+              <p className="text-sm font-medium mt-1" style={{ color: 'var(--foreground)' }}>{candidate.email}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Phone</p>
-              <p className="text-sm font-medium text-gray-900 mt-1">{candidate.phone}</p>
+              <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Phone</p>
+              <p className="text-sm font-medium mt-1" style={{ color: 'var(--foreground)' }}>{candidate.phone}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Match Score</p>
-              <p className="text-sm font-medium text-blue-600 mt-1">
+              <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Match Score</p>
+              <p className="text-sm font-medium mt-1" style={{ color: 'var(--primary)' }}>
                 {((candidate.reranker_score + 10) * 5).toFixed(0)}%
               </p>
             </div>
           </div>
 
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Resume Summary</p>
-            <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap">
+            <p className="text-xs uppercase tracking-wide mb-2" style={{ color: 'var(--muted)' }}>Resume Summary</p>
+            <div className="rounded-lg p-4 text-sm whitespace-pre-wrap" style={{ backgroundColor: 'var(--accent)', color: 'var(--foreground)' }}>
               {candidate.summary}
             </div>
           </div>
 
-          <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
+          <div className="flex gap-3 justify-end pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
             <button
               onClick={onClose}
               disabled={isSaving}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="px-4 py-2 border rounded-lg font-medium transition-colors disabled:opacity-50"
+              style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}
+              onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--accent)')}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
               Close
             </button>
             <button
               onClick={() => onSave(candidate.user_id)}
               disabled={isSaving}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: 'var(--primary)' }}
+              onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--primary-hover)')}
+              onMouseLeave={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--primary)')}
             >
               {isSaving ? 'Saving...' : 'Save Candidate'}
             </button>

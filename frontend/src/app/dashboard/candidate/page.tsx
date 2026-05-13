@@ -142,7 +142,7 @@ export default function CandidateDashboard() {
       title: 'Profile Completion',
       value: '60%',
       icon: UserCircleIcon,
-      color: 'text-green-600',
+      color: 'text-orange-600',
     },
     {
       title: 'Profile Views',
@@ -184,7 +184,7 @@ export default function CandidateDashboard() {
       description: 'Add your skills, experience, and preferences to improve your matches.',
       icon: UserCircleIcon,
       href: '/dashboard/profile',
-      color: 'bg-green-50 hover:bg-green-100 border-green-200',
+      color: 'bg-orange-50 hover:bg-orange-100 border-orange-200',
     },
   ];
 
@@ -192,7 +192,7 @@ export default function CandidateDashboard() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-full">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-purple-600 border-t-transparent" />
         </div>
       </DashboardLayout>
     );
@@ -201,64 +201,60 @@ export default function CandidateDashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg p-8 text-white">
-          <h1 className="text-3xl font-bold mb-2">
+        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             Welcome back, {userName || `User #${user?.user_id}`}!
           </h1>
-          <p className="text-blue-100">
+          <p className="text-gray-600 dark:text-gray-400">
             Manage your resume, track your applications, and get matched with opportunities.
           </p>
         </div>
 
-        {/* Statistics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {statCards.map((stat) => {
             const Icon = stat.icon;
             return (
               <div
                 key={stat.title}
-                className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-shadow"
+                className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 card-hover"
               >
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-3">
                   <Icon className={`w-8 h-8 ${stat.color}`} />
                 </div>
-                <p className="text-sm text-gray-600 mb-1">{stat.title}</p>
-                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">{stat.title}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
               </div>
             );
           })}
         </div>
 
-        {/* Quick Actions Section */}
         <div>
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {actionCards.map((action) => {
               const Icon = action.icon;
               return (
                 <button
                   key={action.title}
                   onClick={() => router.push(action.href)}
-                  className={`${action.color} border rounded-lg p-6 text-left transition-all hover:shadow-md`}
+                  className={`${action.color} dark:bg-gray-900 dark:border-gray-800 dark:hover:bg-gray-800 border rounded-lg p-6 text-left transition-all card-hover`}
                 >
-                  <Icon className="w-10 h-10 text-gray-700 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  <Icon className="w-10 h-10 text-orange-600 dark:text-orange-500 mb-3" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
                     {action.title}
                   </h3>
-                  <p className="text-sm text-gray-600">{action.description}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{action.description}</p>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Recent Activity Section */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Activity</h2>
+        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Recent Activity</h2>
           <div className="text-center py-8">
-            <p className="text-gray-500">No recent activity to display.</p>
-            <p className="text-sm text-gray-400 mt-2">
+            <p className="text-gray-500 dark:text-gray-400">No recent activity to display.</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
               Start by uploading your resume or completing your profile.
             </p>
           </div>

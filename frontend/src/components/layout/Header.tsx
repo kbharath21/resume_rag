@@ -57,36 +57,41 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
   };
 
   return (
-    <header className="h-14 bg-white dark:bg-gray-900 border-b border-gray-300 dark:border-gray-700 flex items-center justify-between px-4 shadow-sm">
-      <div className="flex items-center space-x-3">
+    <header className="h-16 border-b flex items-center justify-between px-6" style={{ backgroundColor: 'var(--header-bg)', borderColor: 'var(--border)' }}>
+      <div className="flex items-center space-x-4">
         <button
           onClick={onToggleSidebar}
-          className="lg:hidden p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          className="lg:hidden p-2 rounded-lg transition-colors"
+          style={{ color: 'var(--foreground)' }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent)'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           aria-label="Toggle sidebar"
         >
-          <Bars3Icon className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+          <Bars3Icon className="w-6 h-6" />
         </button>
 
-        <h2 className="text-base font-normal text-gray-900 dark:text-gray-100 hidden sm:block">
+        <h2 className="text-base font-medium hidden sm:block" style={{ color: 'var(--foreground)' }}>
           Welcome back!
         </h2>
       </div>
 
-      <div className="flex items-center space-x-1">
+      <div className="flex items-center space-x-2">
         <ThemeToggle />
         
         <div className="relative">
           <button
             onClick={toggleDropdown}
-            className="flex items-center space-x-2 p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="flex items-center space-x-3 p-2 rounded-lg transition-colors"
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             aria-label="User menu"
           >
-            <UserCircleIcon className="w-7 h-7 text-gray-700 dark:text-gray-300" />
+            <UserCircleIcon className="w-8 h-8" style={{ color: 'var(--secondary)' }} />
             <div className="hidden sm:block text-left">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>
                 {userName || `User #${user?.user_id}` || 'Guest'}
               </p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 capitalize">{user?.role || 'Unknown'}</p>
+              <p className="text-xs capitalize" style={{ color: 'var(--muted)' }}>{user?.role || 'Unknown'}</p>
             </div>
           </button>
 
@@ -97,28 +102,34 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
                 onClick={() => setIsDropdownOpen(false)}
               />
 
-              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded shadow-lg border border-gray-300 dark:border-gray-700 z-20">
+              <div className="absolute right-0 mt-2 w-48 rounded-lg border z-20 overflow-hidden" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
                 <div className="py-1">
                   <button
                     onClick={() => {
                       router.push('/dashboard/profile');
                       setIsDropdownOpen(false);
                     }}
-                    className="w-full flex items-center space-x-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left text-sm"
+                    className="w-full flex items-center space-x-3 px-4 py-2.5 transition-colors text-left"
+                    style={{ color: 'var(--foreground)' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <UserCircleIcon className="w-4 h-4 text-gray-700 dark:text-gray-300" />
-                    <span className="text-gray-900 dark:text-gray-100">Profile</span>
+                    <UserCircleIcon className="w-5 h-5" style={{ color: 'var(--muted)' }} />
+                    <span className="text-sm font-medium">Profile</span>
                   </button>
 
-                  <div className="my-1 border-t border-gray-200 dark:border-gray-700" />
+                  <div className="my-1 border-t" style={{ borderColor: 'var(--border)' }} />
 
                   <button
                     onClick={handleLogout}
                     disabled={isLoggingOut}
-                    className="w-full flex items-center space-x-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left disabled:opacity-50 text-sm"
+                    className="w-full flex items-center space-x-3 px-4 py-2.5 transition-colors text-left disabled:opacity-50"
+                    style={{ color: '#ef4444' }}
+                    onMouseEnter={(e) => !isLoggingOut && (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)')}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <ArrowRightOnRectangleIcon className="w-4 h-4 text-red-600 dark:text-red-400" />
-                    <span className="text-red-600 dark:text-red-400">
+                    <ArrowRightOnRectangleIcon className="w-5 h-5" />
+                    <span className="text-sm font-medium">
                       {isLoggingOut ? 'Logging out...' : 'Logout'}
                     </span>
                   </button>

@@ -72,7 +72,7 @@ export default function JobsPage() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-full">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--primary)' }} />
         </div>
       </DashboardLayout>
     );
@@ -81,9 +81,9 @@ export default function JobsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Job Opportunities</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
+        <div className="page-header">
+          <h1 className="text-5xl font-extrabold tracking-tight" style={{ color: 'var(--foreground)' }}>Job Opportunities</h1>
+          <p className="mt-3 text-lg" style={{ color: 'var(--muted)' }}>
             Companies that have reached out to you based on your profile
           </p>
         </div>
@@ -97,12 +97,12 @@ export default function JobsPage() {
         )}
 
         {applications.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700 p-12 text-center">
-            <BriefcaseIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          <div className="rounded-lg border p-12 text-center" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+            <BriefcaseIcon className="w-16 h-16 mx-auto mb-4" style={{ color: 'var(--muted)' }} />
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--foreground)' }}>
               No opportunities yet
             </h3>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p style={{ color: 'var(--muted)' }}>
               Companies will reach out to you when they find your profile interesting.
               Make sure your resume and profile are up to date!
             </p>
@@ -110,15 +110,22 @@ export default function JobsPage() {
         ) : (
           <>
           <div className="space-y-4">
-            <div className="flex items-center justify-between bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
-              <p className="text-sm text-purple-800 dark:text-purple-300">
+            <div className="flex items-center justify-between border rounded-lg p-4" style={{ backgroundColor: 'var(--accent)', borderColor: 'var(--primary)' }}>
+              <p className="text-sm" style={{ color: 'var(--primary)' }}>
                 <strong>{total}</strong> {total === 1 ? 'company has' : 'companies have'} reached out to you
               </p>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-purple-800 dark:text-purple-300">Sort by:</span>
+                <span className="text-sm" style={{ color: 'var(--primary)' }}>Sort by:</span>
                 <button
                   onClick={() => handleSort('sent_at')}
-                  className="flex items-center gap-1 px-3 py-1 bg-white dark:bg-gray-800 border border-purple-300 dark:border-purple-700 rounded text-sm font-medium text-purple-800 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40"
+                  className="flex items-center gap-1 px-3 py-1 border rounded text-sm font-medium transition-colors"
+                  style={{ 
+                    backgroundColor: 'var(--card)', 
+                    borderColor: 'var(--primary)',
+                    color: 'var(--primary)'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--card)'}
                 >
                   Date Contacted
                   {preferences.sort_by === 'sent_at' && (
@@ -131,15 +138,16 @@ export default function JobsPage() {
             {applications.map((app) => (
               <div
                 key={app.id}
-                className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700 p-6 hover:shadow-lg transition-shadow"
+                className="rounded-lg border p-6 hover:shadow-lg transition-shadow"
+                style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}
               >
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">{app.role_title}</h3>
-                    <p className="text-lg text-gray-700 dark:text-gray-300 mt-1">{app.company_name}</p>
+                    <h3 className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>{app.role_title}</h3>
+                    <p className="text-lg mt-1" style={{ color: 'var(--foreground)' }}>{app.company_name}</p>
                   </div>
                   <div className="text-right">
-                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                    <div className="flex items-center text-sm" style={{ color: 'var(--muted)' }}>
                       <CalendarIcon className="w-4 h-4 mr-1" />
                       Contacted {formatDate(app.contacted_at)}
                     </div>
@@ -148,29 +156,29 @@ export default function JobsPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   {app.department && (
-                    <div className="flex items-center text-gray-600 dark:text-gray-400">
+                    <div className="flex items-center" style={{ color: 'var(--muted)' }}>
                       <BriefcaseIcon className="w-5 h-5 mr-2" />
                       <span>{app.department}</span>
                     </div>
                   )}
                   {app.location && (
-                    <div className="flex items-center text-gray-600 dark:text-gray-400">
+                    <div className="flex items-center" style={{ color: 'var(--muted)' }}>
                       <MapPinIcon className="w-5 h-5 mr-2" />
                       <span>{app.location}</span>
                     </div>
                   )}
                   {app.salary_range && (
-                    <div className="flex items-center text-gray-600 dark:text-gray-400">
+                    <div className="flex items-center" style={{ color: 'var(--muted)' }}>
                       <CurrencyDollarIcon className="w-5 h-5 mr-2" />
                       <span>{app.salary_range}</span>
                     </div>
                   )}
                 </div>
 
-                <p className="text-gray-700 dark:text-gray-300 mb-4">{app.description}</p>
+                <p className="mb-4" style={{ color: 'var(--foreground)' }}>{app.description}</p>
 
-                <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+                  <div className="text-sm" style={{ color: 'var(--muted)' }}>
                     {app.hr_name && (
                       <p>Contact: {app.hr_name} ({app.hr_email})</p>
                     )}
@@ -180,7 +188,10 @@ export default function JobsPage() {
                       href={app.apply_link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                      className="px-6 py-2 text-white rounded-lg transition-colors"
+                      style={{ backgroundColor: 'var(--primary)' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--primary-hover)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--primary)'}
                     >
                       View Details & Apply
                     </a>
@@ -192,15 +203,20 @@ export default function JobsPage() {
           {pages > 1 && (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm" style={{ color: 'var(--muted)' }}>
                   Showing {((preferences.current_page - 1) * preferences.items_per_page) + 1} to {Math.min(preferences.current_page * preferences.items_per_page, total)} of {total} opportunities
                 </p>
                 <div className="flex items-center gap-2">
-                  <label className="text-sm text-gray-600 dark:text-gray-400">Per page:</label>
+                  <label className="text-sm" style={{ color: 'var(--muted)' }}>Per page:</label>
                   <select
                     value={preferences.items_per_page}
                     onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                    className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    className="px-2 py-1 border rounded text-sm"
+                    style={{ 
+                      backgroundColor: 'var(--card)', 
+                      borderColor: 'var(--border)',
+                      color: 'var(--foreground)'
+                    }}
                   >
                     <option value={5}>5</option>
                     <option value={10}>10</option>
@@ -213,7 +229,10 @@ export default function JobsPage() {
                 <button
                   onClick={() => setCurrentPage(preferences.current_page - 1)}
                   disabled={preferences.current_page === 1}
-                  className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 border rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                  onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--accent)')}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   Previous
                 </button>
@@ -232,11 +251,22 @@ export default function JobsPage() {
                     <button
                       key={pageNum}
                       onClick={() => setCurrentPage(pageNum)}
-                      className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                      className="px-3 py-1 rounded-lg text-sm font-medium transition-colors"
+                      style={
                         preferences.current_page === pageNum
-                          ? 'bg-purple-600 text-white'
-                          : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                      }`}
+                          ? { backgroundColor: 'var(--primary)', color: 'white' }
+                          : { borderWidth: '1px', borderColor: 'var(--border)', color: 'var(--foreground)' }
+                      }
+                      onMouseEnter={(e) => {
+                        if (preferences.current_page !== pageNum) {
+                          e.currentTarget.style.backgroundColor = 'var(--accent)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (preferences.current_page !== pageNum) {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }
+                      }}
                     >
                       {pageNum}
                     </button>
@@ -245,7 +275,10 @@ export default function JobsPage() {
                 <button
                   onClick={() => setCurrentPage(preferences.current_page + 1)}
                   disabled={preferences.current_page === pages}
-                  className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 border rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                  onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = 'var(--accent)')}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   Next
                 </button>

@@ -102,14 +102,16 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-black flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-semibold text-purple-700 dark:text-purple-500 mb-2">Resume RAG</h1>
-          <p className="text-gray-700 dark:text-gray-300 text-sm">Make the most of your professional life</p>
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-black dark:text-white mb-2">
+            Resume RAG
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Make the most of your professional life</p>
         </div>
 
-        <div className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded shadow-sm p-6">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-8">
           {errorMessage && (
             <div className="mb-4">
               <Alert
@@ -162,14 +164,14 @@ export default function RegisterPage() {
             />
 
             <div>
-              <label className="block text-sm font-normal text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-bold text-black dark:text-white mb-3">
                 I am a <span className="text-red-500">*</span>
               </label>
               <div className="space-y-2">
-                <label className={`flex items-center p-3 border rounded cursor-pointer transition-colors ${
+                <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
                   role === 'candidate' 
-                    ? 'border-purple-700 bg-purple-50 dark:bg-purple-950' 
-                    : 'border-gray-300 dark:border-gray-700'
+                    ? 'border-purple-600 bg-purple-50 dark:bg-purple-950/30' 
+                    : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700'
                 }`}>
                   <input
                     type="radio"
@@ -178,22 +180,22 @@ export default function RegisterPage() {
                     checked={role === 'candidate'}
                     onChange={(e) => setRole(e.target.value as 'candidate')}
                     disabled={isLoading}
-                    className="w-4 h-4 text-purple-700"
+                    className="w-4 h-4 text-purple-600"
                   />
                   <div className="ml-3 flex-1">
-                    <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">
+                    <span className="font-bold text-black dark:text-white text-sm">
                       Candidate
                     </span>
-                    <span className="ml-2 text-xs text-gray-600 dark:text-gray-400">
+                    <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
                       Looking for opportunities
                     </span>
                   </div>
                 </label>
 
-                <label className={`flex items-center p-3 border rounded cursor-pointer transition-colors ${
+                <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
                   role === 'hr' 
-                    ? 'border-purple-700 bg-purple-50 dark:bg-purple-950' 
-                    : 'border-gray-300 dark:border-gray-700'
+                    ? 'border-purple-600 bg-purple-50 dark:bg-purple-950/30' 
+                    : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700'
                 }`}>
                   <input
                     type="radio"
@@ -202,20 +204,20 @@ export default function RegisterPage() {
                     checked={role === 'hr'}
                     onChange={(e) => setRole(e.target.value as 'hr')}
                     disabled={isLoading}
-                    className="w-4 h-4 text-purple-700"
+                    className="w-4 h-4 text-purple-600"
                   />
                   <div className="ml-3 flex-1">
-                    <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">
+                    <span className="font-bold text-black dark:text-white text-sm">
                       HR Professional
                     </span>
-                    <span className="ml-2 text-xs text-gray-600 dark:text-gray-400">
+                    <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
                       Recruiting candidates
                     </span>
                   </div>
                 </label>
               </div>
               {errors.role && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.role}</p>
+                <p className="mt-1.5 text-sm text-red-600 dark:text-red-400">{errors.role}</p>
               )}
             </div>
 
@@ -224,38 +226,38 @@ export default function RegisterPage() {
               variant="primary"
               size="md"
               isLoading={isLoading}
-              className="w-full"
+              className="w-full mt-6"
             >
               Agree & Join
             </Button>
           </form>
 
-          <div className="my-4 flex items-center">
-            <div className="flex-1 border-t border-gray-300 dark:border-gray-700" />
-            <span className="px-3 text-gray-600 dark:text-gray-400 text-xs">or</span>
-            <div className="flex-1 border-t border-gray-300 dark:border-gray-700" />
+          <div className="my-6 flex items-center">
+            <div className="flex-1 border-t border-gray-200 dark:border-gray-800" />
+            <span className="px-4 text-gray-500 dark:text-gray-400 text-xs">or</span>
+            <div className="flex-1 border-t border-gray-200 dark:border-gray-800" />
           </div>
 
-          <p className="text-center text-gray-700 dark:text-gray-300 text-sm">
+          <p className="text-center text-gray-600 dark:text-gray-400 text-sm">
             Already on Resume RAG?{' '}
             <Link
               href="/login"
-              className="text-purple-700 hover:text-purple-800 dark:text-purple-500 dark:hover:text-purple-400 font-medium transition-colors"
+              className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 font-semibold transition-colors"
             >
               Sign in
             </Link>
           </p>
         </div>
 
-        <p className="text-center text-gray-600 dark:text-gray-400 text-xs mt-4">
+        <p className="text-center text-gray-500 dark:text-gray-500 text-xs mt-6">
           By clicking Agree & Join, you agree to our{' '}
-          <a href="#" className="text-purple-700 dark:text-purple-500 hover:underline">
+          <a href="#" className="text-purple-600 dark:text-purple-400 hover:underline">
             User Agreement
           </a>,{' '}
-          <a href="#" className="text-purple-700 dark:text-purple-500 hover:underline">
+          <a href="#" className="text-purple-600 dark:text-purple-400 hover:underline">
             Privacy Policy
           </a>, and{' '}
-          <a href="#" className="text-purple-700 dark:text-purple-500 hover:underline">
+          <a href="#" className="text-purple-600 dark:text-purple-400 hover:underline">
             Cookie Policy
           </a>
         </p>

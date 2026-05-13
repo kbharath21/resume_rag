@@ -74,14 +74,14 @@ export default function HRDashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <div>
-          <h1 className="text-4xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-2">Welcome back. Here is your recruitment overview.</p>
+        <div className="page-header">
+          <h1 className="text-5xl font-extrabold tracking-tight" style={{ color: 'var(--foreground)' }}>Dashboard</h1>
+          <p className="mt-3 text-lg" style={{ color: 'var(--muted)' }}>Welcome back. Here is your recruitment overview.</p>
         </div>
 
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--primary)' }} />
           </div>
         ) : (
           <>
@@ -103,21 +103,22 @@ export default function HRDashboard() {
               />
             </div>
 
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Activity</h2>
+            <div className="rounded-lg border p-6" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+              <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Recent Activity</h2>
               {stats.recentActivity.length > 0 ? (
                 <div className="space-y-3">
                   {stats.recentActivity.map((activity) => (
                     <div
                       key={activity.id}
-                      className="flex items-start justify-between p-3 bg-gray-50 rounded-lg border border-gray-100"
+                      className="flex items-start justify-between p-3 rounded-lg border"
+                      style={{ backgroundColor: 'var(--accent)', borderColor: 'var(--border)' }}
                     >
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{activity.title}</p>
-                        <p className="text-xs text-gray-500 mt-1">{activity.timestamp}</p>
+                        <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{activity.title}</p>
+                        <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>{activity.timestamp}</p>
                       </div>
                       <div className="flex-shrink-0">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'var(--primary)', color: 'white' }}>
                           {activity.type.replace('_', ' ')}
                         </span>
                       </div>
@@ -125,7 +126,7 @@ export default function HRDashboard() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-8">No recent activity</p>
+                <p className="text-center py-8" style={{ color: 'var(--muted)' }}>No recent activity</p>
               )}
             </div>
           </>
@@ -143,10 +144,10 @@ interface StatCardProps {
 
 function StatCard({ label, value, description }: StatCardProps) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <p className="text-sm font-medium text-gray-600">{label}</p>
-      <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
-      <p className="text-xs text-gray-500 mt-2">{description}</p>
+    <div className="rounded-lg border p-6" style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}>
+      <p className="text-sm font-medium" style={{ color: 'var(--muted)' }}>{label}</p>
+      <p className="text-3xl font-bold mt-2" style={{ color: 'var(--foreground)' }}>{value}</p>
+      <p className="text-xs mt-2" style={{ color: 'var(--muted)' }}>{description}</p>
     </div>
   );
 }

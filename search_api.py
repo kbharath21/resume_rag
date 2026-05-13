@@ -13,12 +13,9 @@ from jose import jwt, JWTError
 from redis_client import redis_client
 from database import get_db
 from models import JobPosting
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import resend
 from datetime import datetime
 from models import JobPosting, SavedCandidate, OutreachEmail, User, UserPreferences
-from sentence_transformers import CrossEncoder
 from sentence_transformers import CrossEncoder
 
 
@@ -521,15 +518,25 @@ This is a personal note — we are reaching out to a small number of candidates 
 {hr_name}
 {job.company_name}
 """
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"{job.company_name} — {job.role_title} opening we think you'd be great for"
-    msg["From"] = os.getenv("SMTP_FROM")
-    msg["To"] = to_email
-    msg.attach(MIMEText(body, "plain"))
-
-    with smtplib.SMTP_SSL(os.getenv("SMTP_HOST"), 465) as server:
-        server.login(os.getenv("SMTP_USER"), os.getenv("SMTP_PASS"))
-        server.sendmail(os.getenv("SMTP_FROM"), to_email, msg.as_string())
+    
+    resend.api_key = os.getenv("RESEND_API_KEY")
+    params = {
+        "from": "noreply@kanugulabharathkumar.me",
+        "to": [to_email],
+        "subject": f"{job.company_name} — {job.role_title} opening we think you'd be great for",
+        "text": body,
+    }
+    resend.Emails.send(params)
+    
+    # SMTP (commented out - DigitalOcean blocks SMTP ports)
+    # msg = MIMEMultipart("alternative")
+    # msg["Subject"] = f"{job.company_name} — {job.role_title} opening we think you'd be great for"
+    # msg["From"] = os.getenv("SMTP_FROM")
+    # msg["To"] = to_email
+    # msg.attach(MIMEText(body, "plain"))
+    # with smtplib.SMTP_SSL(os.getenv("SMTP_HOST"), 465) as server:
+    #     server.login(os.getenv("SMTP_USER"), os.getenv("SMTP_PASS"))
+    #     server.sendmail(os.getenv("SMTP_FROM"), to_email, msg.as_string())
 
 
 @app.post("/send_outreach")

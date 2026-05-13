@@ -150,7 +150,14 @@ export default function JobPostingsPage() {
       header: 'Status',
       sortable: true,
       render: (job) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${job.is_active ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'}`}>
+        <span 
+          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+          style={
+            job.is_active 
+              ? { backgroundColor: 'rgba(22, 163, 74, 0.1)', color: 'var(--success)' }
+              : { backgroundColor: 'var(--accent)', color: 'var(--muted)' }
+          }
+        >
           {job.is_active ? 'Active' : 'Inactive'}
         </span>
       ),
@@ -177,12 +184,18 @@ export default function JobPostingsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between page-header">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Job Postings</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">Manage your job postings</p>
+            <h1 className="text-5xl font-extrabold tracking-tight" style={{ color: 'var(--foreground)' }}>Job Postings</h1>
+            <p className="mt-3 text-lg" style={{ color: 'var(--muted)' }}>Manage your job postings</p>
           </div>
-          <button onClick={() => setShowModal(true)} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium">
+          <button 
+            onClick={() => setShowModal(true)} 
+            className="px-4 py-2 text-white rounded-lg font-medium transition-colors"
+            style={{ backgroundColor: 'var(--primary)' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--primary-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--primary)'}
+          >
             Create Job Posting
           </button>
         </div>

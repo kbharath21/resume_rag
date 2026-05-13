@@ -4,12 +4,14 @@ interface CardProps {
   children: ReactNode;
   className?: string;
   padding?: 'none' | 'sm' | 'md' | 'lg';
+  hover?: boolean;
 }
 
 export const Card: React.FC<CardProps> = ({ 
   children, 
   className = '', 
-  padding = 'md' 
+  padding = 'md',
+  hover = false
 }) => {
   const paddingStyles = {
     none: '',
@@ -20,10 +22,15 @@ export const Card: React.FC<CardProps> = ({
 
   return (
     <div
+      style={{
+        backgroundColor: 'var(--card)',
+        borderColor: 'var(--border)',
+        color: 'var(--card-foreground)',
+      }}
       className={`
-        bg-white dark:bg-gray-900 
-        border border-gray-300 dark:border-gray-700 
-        rounded shadow-sm
+        border
+        rounded-lg
+        ${hover ? 'card-hover' : ''}
         ${paddingStyles[padding]}
         ${className}
       `}

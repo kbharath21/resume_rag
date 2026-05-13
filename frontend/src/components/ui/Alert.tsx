@@ -13,20 +13,40 @@ export const Alert: React.FC<AlertProps> = ({
   onDismiss,
   children,
 }) => {
-  const typeStyles = {
-    error: 'bg-red-50 border-red-300 text-red-800 dark:bg-red-950 dark:border-red-800 dark:text-red-200',
-    success: 'bg-green-50 border-green-300 text-green-800 dark:bg-green-950 dark:border-green-800 dark:text-green-200',
-    warning: 'bg-yellow-50 border-yellow-300 text-yellow-800 dark:bg-yellow-950 dark:border-yellow-800 dark:text-yellow-200',
-    info: 'bg-blue-50 border-blue-300 text-blue-800 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-200',
+  const getTypeStyles = () => {
+    switch (type) {
+      case 'error':
+        return {
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          borderColor: 'rgba(239, 68, 68, 0.3)',
+          color: '#dc2626'
+        };
+      case 'success':
+        return {
+          backgroundColor: 'rgba(22, 163, 74, 0.1)',
+          borderColor: 'rgba(22, 163, 74, 0.3)',
+          color: 'var(--success)'
+        };
+      case 'warning':
+        return {
+          backgroundColor: 'rgba(234, 179, 8, 0.1)',
+          borderColor: 'rgba(234, 179, 8, 0.3)',
+          color: '#ca8a04'
+        };
+      case 'info':
+        return {
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          borderColor: 'rgba(59, 130, 246, 0.3)',
+          color: '#2563eb'
+        };
+    }
   };
 
   return (
     <div
       role="alert"
-      className={`
-        border px-4 py-3 rounded flex items-start justify-between
-        ${typeStyles[type]}
-      `}
+      className="border px-4 py-3 rounded-lg flex items-start justify-between"
+      style={getTypeStyles()}
     >
       <div className="flex-1">
         <p className="font-medium text-sm">{message}</p>

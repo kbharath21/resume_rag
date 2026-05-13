@@ -65,7 +65,29 @@ export default function SavedCandidatesPage() {
     try {
       setIsLoading(true);
       const response = await searchApi.get('/saved_candidates');
-      setCandidates(response.data.candidates || []);
+      const fetchedCandidates = response.data.candidates || [];
+      
+      // Apply sorting on frontend
+      const sorted = [...fetchedCandidates].sort((a, b) => {
+        const aVal = a[preferences.sort_by as keyof SavedCandidate];
+        const bVal = b[preferences.sort_by as keyof SavedCandidate];
+        
+        if (aVal === null || aVal === undefined) return 1;
+        if (bVal === null || bVal === undefined) return -1;
+        
+        let comparison = 0;
+        if (typeof aVal === 'string' && typeof bVal === 'string') {
+          comparison = aVal.localeCompare(bVal);
+        } else if (typeof aVal === 'number' && typeof bVal === 'number') {
+          comparison = aVal - bVal;
+        } else {
+          comparison = String(aVal).localeCompare(String(bVal));
+        }
+        
+        return preferences.sort_direction === 'asc' ? comparison : -comparison;
+      });
+      
+      setCandidates(sorted);
       setTotal(response.data.total || 0);
       setPages(response.data.pages || 0);
     } catch {
@@ -250,13 +272,14 @@ export default function SavedCandidatesPage() {
       sortable: true,
       render: (candidate) => (
         <span
-          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+          style={
             candidate.status === 'emailed'
-              ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300'
+              ? { backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }
               : candidate.status === 'interviewed'
-              ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
-          }`}
+              ? { backgroundColor: 'rgba(22, 163, 74, 0.1)', color: 'var(--success)' }
+              : { backgroundColor: 'var(--accent)', color: 'var(--muted)' }
+          }
         >
           {candidate.status}
         </span>

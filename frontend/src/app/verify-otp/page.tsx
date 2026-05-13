@@ -97,24 +97,26 @@ export default function VerifyOTPPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Verify Code</h1>
-          <p className="text-gray-600">
-            Enter the 6-digit code sent to <strong>{email}</strong>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+            Verify Code
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">
+            Enter the 6-digit code sent to <strong className="text-gray-900 dark:text-white">{email}</strong>
           </p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-lg p-8">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-8">
           {successMessage && (
-            <div className="mb-6">
+            <div className="mb-4">
               <Alert type="success" message={successMessage} />
             </div>
           )}
 
           {error && (
-            <div className="mb-6">
+            <div className="mb-4">
               <Alert
                 type="error"
                 message={error}
@@ -123,7 +125,7 @@ export default function VerifyOTPPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               id="code"
               type="text"
@@ -149,11 +151,11 @@ export default function VerifyOTPPage() {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-gray-600 text-sm">
+            <p className="text-gray-600 dark:text-gray-400 text-sm">
               Didn't receive the code?{' '}
               <button
                 onClick={() => router.back()}
-                className="text-blue-600 hover:text-blue-700 font-semibold transition-colors"
+                className="text-orange-600 hover:text-orange-700 dark:text-orange-500 dark:hover:text-orange-400 font-semibold transition-colors"
                 disabled={isLoading}
               >
                 Go back

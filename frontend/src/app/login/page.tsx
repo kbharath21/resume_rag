@@ -121,14 +121,16 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-black flex items-center justify-center px-4">
+    <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-semibold text-purple-700 dark:text-purple-500 mb-2">Resume RAG</h1>
-          <p className="text-gray-700 dark:text-gray-300 text-sm">Sign in to your account</p>
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-black dark:text-white mb-2">
+            Resume RAG
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Sign in to your account</p>
         </div>
 
-        <div className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded shadow-sm p-6">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-8">
           {successMessage && (
             <div className="mb-4">
               <Alert
@@ -181,36 +183,36 @@ function LoginForm() {
               variant="primary"
               size="md"
               isLoading={isLoading}
-              className="w-full"
+              className="w-full mt-6"
             >
               Sign In
             </Button>
           </form>
 
-          <div className="my-4 flex items-center">
-            <div className="flex-1 border-t border-gray-300 dark:border-gray-700" />
-            <span className="px-3 text-gray-600 dark:text-gray-400 text-xs">or</span>
-            <div className="flex-1 border-t border-gray-300 dark:border-gray-700" />
+          <div className="my-6 flex items-center">
+            <div className="flex-1 border-t border-gray-200 dark:border-gray-800" />
+            <span className="px-4 text-gray-500 dark:text-gray-400 text-xs">or</span>
+            <div className="flex-1 border-t border-gray-200 dark:border-gray-800" />
           </div>
 
-          <p className="text-center text-gray-700 dark:text-gray-300 text-sm">
+          <p className="text-center text-gray-600 dark:text-gray-400 text-sm">
             New to Resume RAG?{' '}
             <Link
               href="/register"
-              className="text-purple-700 hover:text-purple-800 dark:text-purple-500 dark:hover:text-purple-400 font-medium transition-colors"
+              className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 font-semibold transition-colors"
             >
               Join now
             </Link>
           </p>
         </div>
 
-        <p className="text-center text-gray-600 dark:text-gray-400 text-xs mt-4">
+        <p className="text-center text-gray-500 dark:text-gray-500 text-xs mt-6">
           By signing in, you agree to our{' '}
-          <a href="#" className="text-purple-700 dark:text-purple-500 hover:underline">
+          <a href="#" className="text-purple-600 dark:text-purple-400 hover:underline">
             Terms
           </a>{' '}
           and{' '}
-          <a href="#" className="text-purple-700 dark:text-purple-500 hover:underline">
+          <a href="#" className="text-purple-600 dark:text-purple-400 hover:underline">
             Privacy Policy
           </a>
         </p>

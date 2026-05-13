@@ -1,13 +1,11 @@
 from jose import jwt
 from datetime import datetime, timedelta
 import os
-import smtplib
 import secrets
 import hashlib
 import re
 import bcrypt
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import resend
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
@@ -77,45 +75,29 @@ def verify_otp(stored_otp: str | None, provided_otp: str, expires_at: datetime) 
     return secrets.compare_digest(stored_otp, provided_otp)
 
 def send_otp_email(receiver_email: str, otp: str):
-    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    sender_email = os.getenv("SMTP_USER")
-    sender_password = os.getenv("SMTP_PASS") 
-    from_email = os.getenv("SMTP_FROM", sender_email)
-
-    if not sender_email or not sender_password:
-        print("ERROR: Gmail credentials missing from .env")
+    resend.api_key = os.getenv("RESEND_API_KEY")
+    
+    if not resend.api_key:
+        print("ERROR: RESEND_API_KEY missing from .env")
         return
-
-    message = MIMEMultipart("alternative")
-    message["Subject"] = "Resume AI - Your Verification Code"
-    message["From"] = from_email
-    message["To"] = receiver_email  
-
-    text = f"""
-    Hello,
     
-    Your verification code for Resume AI is: {otp}
-    
-    This code will expire in 10 minutes. Please do not share it with anyone.
-    """
-    
-    message.attach(MIMEText(text, "plain"))
-
     try:
-        server = smtplib.SMTP(smtp_host, 587, timeout=10)
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.sendmail(sender_email, receiver_email, message.as_string())
-        
+        resend.Emails.send({
+            "from": "Resume AI <noreply@kanugulabharathkumar.me>",
+            "to": receiver_email,
+            "subject": "Resume AI - Your Verification Code",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2>Resume AI Verification</h2>
+                <p>Your verification code is:</p>
+                <h1 style="background: #f4f4f4; padding: 20px; text-align: center; letter-spacing: 5px;">{otp}</h1>
+                <p>This code will expire in 10 minutes.</p>
+                <p style="color: #666; font-size: 12px;">If you didn't request this code, please ignore this email.</p>
+            </div>
+            """
+        })
         print(f"SUCCESS: OTP sent to {receiver_email}")
-        
     except Exception as e:
         print(f"FAILED to send email: {str(e)}")
-        
-    finally:
-        try:
-            server.quit()
-        except:
-            pass
 
 

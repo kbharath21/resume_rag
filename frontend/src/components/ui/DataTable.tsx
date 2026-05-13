@@ -38,32 +38,56 @@ export function DataTable<T>({
 
   if (data.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700 p-12 text-center">
-        <p className="text-gray-500 dark:text-gray-400 text-lg">{emptyMessage}</p>
+      <div
+        style={{
+          backgroundColor: 'var(--card)',
+          borderColor: 'var(--border)',
+          color: 'var(--card-foreground)',
+        }}
+        className="rounded-lg border p-12 text-center"
+      >
+        <p style={{ color: 'var(--muted)' }} className="text-lg">{emptyMessage}</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700 overflow-hidden">
+    <div
+      style={{
+        backgroundColor: 'var(--card)',
+        borderColor: 'var(--border)',
+      }}
+      className="rounded-lg border overflow-hidden"
+    >
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-300 dark:border-gray-700">
+          <thead
+            style={{
+              backgroundColor: 'var(--table-header)',
+              borderColor: 'var(--border)',
+            }}
+            className="border-b"
+          >
             <tr>
               {columns.map((column) => (
                 <th key={column.key} className="px-4 py-3 text-left">
                   {column.sortable && onSort ? (
                     <button
                       onClick={() => onSort(column.key)}
-                      className="flex items-center gap-1 text-sm font-semibold text-gray-900 dark:text-white hover:text-purple-600 dark:hover:text-purple-400"
+                      style={{ color: 'var(--foreground)' }}
+                      className="flex items-center gap-2 text-sm font-semibold hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
                     >
                       {column.header}
-                      {sortBy === column.key && (
-                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                      )}
+                      <span className="w-4 text-center">
+                        {sortBy === column.key && (
+                          <span className="text-purple-600 dark:text-purple-400">
+                            {sortDirection === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </span>
                     </button>
                   ) : (
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                    <span style={{ color: 'var(--foreground)' }} className="text-sm font-semibold">
                       {column.header}
                     </span>
                   )}
@@ -71,14 +95,22 @@ export function DataTable<T>({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody
+            style={{
+              borderColor: 'var(--border)',
+            }}
+            className="divide-y"
+          >
             {data.map((item) => (
               <tr
                 key={keyExtractor(item)}
-                className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                style={{
+                  backgroundColor: 'var(--card)',
+                }}
+                className="group"
               >
                 {columns.map((column) => (
-                  <td key={column.key} className="px-4 py-3">
+                  <td key={column.key} className="px-4 py-3 group-hover:opacity-90 transition-opacity">
                     {column.render(item)}
                   </td>
                 ))}
@@ -116,15 +148,20 @@ export function Pagination({
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-4">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p style={{ color: 'var(--muted)' }} className="text-sm">
           Showing {startItem} to {endItem} of {totalItems}
         </p>
         <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600 dark:text-gray-400">Per page:</label>
+          <label style={{ color: 'var(--muted)' }} className="text-sm">Per page:</label>
           <select
             value={itemsPerPage}
             onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-            className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            style={{
+              backgroundColor: 'var(--card)',
+              borderColor: 'var(--border)',
+              color: 'var(--foreground)',
+            }}
+            className="px-2 py-1 border rounded text-sm"
           >
             <option value={5}>5</option>
             <option value={10}>10</option>
@@ -138,7 +175,11 @@ export function Pagination({
           <button
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              borderColor: 'var(--border)',
+              color: 'var(--foreground)',
+            }}
+            className="px-3 py-1 border rounded-lg text-sm font-medium hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
           >
             Previous
           </button>
@@ -157,11 +198,12 @@ export function Pagination({
               <button
                 key={pageNum}
                 onClick={() => onPageChange(pageNum)}
-                className={`px-3 py-1 rounded-lg text-sm font-medium ${
-                  currentPage === pageNum
-                    ? 'bg-purple-600 text-white'
-                    : 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
+                style={{
+                  backgroundColor: currentPage === pageNum ? 'var(--primary)' : 'transparent',
+                  color: currentPage === pageNum ? 'var(--primary-foreground)' : 'var(--foreground)',
+                  borderColor: currentPage === pageNum ? 'var(--primary)' : 'var(--border)',
+                }}
+                className="px-3 py-1 rounded-lg text-sm font-medium border transition-all"
               >
                 {pageNum}
               </button>
@@ -170,7 +212,11 @@ export function Pagination({
           <button
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              borderColor: 'var(--border)',
+              color: 'var(--foreground)',
+            }}
+            className="px-3 py-1 border rounded-lg text-sm font-medium hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
           >
             Next
           </button>

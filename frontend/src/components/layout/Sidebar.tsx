@@ -49,7 +49,7 @@ export default function Sidebar({ isOpen, userRole }: SidebarProps) {
     <>
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
           onClick={() => {}}
         />
       )}
@@ -57,16 +57,22 @@ export default function Sidebar({ isOpen, userRole }: SidebarProps) {
       <aside
         className={`
           fixed lg:static inset-y-0 left-0 z-30
-          w-56 bg-white dark:bg-gray-900 border-r border-gray-300 dark:border-gray-700
+          w-64 border-r
           transform transition-transform duration-200 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
+        style={{ 
+          backgroundColor: 'var(--sidebar-bg)',
+          borderColor: 'var(--border)'
+        }}
       >
-        <div className="h-14 flex items-center px-4 border-b border-gray-300 dark:border-gray-700">
-          <h1 className="text-xl font-semibold text-purple-700 dark:text-purple-500">Resume RAG</h1>
+        <div className="h-16 flex items-center px-6 border-b" style={{ borderColor: 'var(--border)' }}>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--secondary)' }}>
+            Resume RAG
+          </h1>
         </div>
 
-        <nav className="py-2">
+        <nav className="py-4 px-3">
           {filteredNavItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
@@ -76,14 +82,27 @@ export default function Sidebar({ isOpen, userRole }: SidebarProps) {
                 key={item.href}
                 href={item.href}
                 className={`
-                  flex items-center space-x-3 px-4 py-2.5 mx-2 rounded
+                  flex items-center space-x-3 px-4 py-2.5 mb-1 rounded-lg
                   transition-colors duration-150 text-sm font-medium
-                  ${
-                    active
-                      ? 'bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-400'
-                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
-                  }
                 `}
+                style={
+                  active
+                    ? { 
+                        backgroundColor: 'var(--accent)', 
+                        color: 'var(--secondary)' 
+                      }
+                    : { color: 'var(--foreground)' }
+                }
+                onMouseEnter={(e) => {
+                  if (!active) {
+                    e.currentTarget.style.backgroundColor = 'var(--accent)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!active) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
               >
                 <Icon className="w-5 h-5" />
                 <span>{item.name}</span>
@@ -92,10 +111,10 @@ export default function Sidebar({ isOpen, userRole }: SidebarProps) {
           })}
         </nav>
 
-        <div className="absolute bottom-4 left-2 right-2">
-          <div className="bg-gray-100 dark:bg-gray-800 rounded px-3 py-2 text-center border border-gray-300 dark:border-gray-700">
-            <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide">Role</p>
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">{userRole}</p>
+        <div className="absolute bottom-6 left-3 right-3">
+          <div className="rounded-lg px-4 py-3 text-center border" style={{ backgroundColor: 'var(--accent)', borderColor: 'var(--border)' }}>
+            <p className="text-xs uppercase tracking-wide font-medium" style={{ color: 'var(--muted)' }}>Role</p>
+            <p className="text-sm font-semibold capitalize mt-1" style={{ color: 'var(--foreground)' }}>{userRole}</p>
           </div>
         </div>
       </aside>

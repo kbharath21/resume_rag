@@ -261,7 +261,7 @@ export default function ResumePage() {
           >
             {file ? (
               <div className="space-y-4">
-                <CheckCircleIcon className="w-16 h-16 text-green-600 mx-auto" />
+                <CheckCircleIcon className="w-16 h-16 mx-auto" style={{ color: 'var(--success)' }} />
                 <div>
                   <p className="text-lg font-semibold text-gray-900">{file.name}</p>
                   <p className="text-sm text-gray-500">

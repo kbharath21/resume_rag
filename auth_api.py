@@ -9,6 +9,7 @@ from database import get_db
 from models import User, UserRole, RefreshToken, UserPreferences
 from enum import Enum  
 from redis_client import redis_client
+from rate_limiter import rate_limit_by_email
 from auth_utils import hash_password, verify_password, create_access_token, create_refresh_token, SECRET_KEY, ALGORITHM, set_user_otp, send_otp_email, validate_password_strength, verify_otp
 import uuid
 from datetime import datetime, timedelta
@@ -34,7 +35,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4000", "http://127.0.0.1:4000", "https://resume-rag-xyxs.vercel.app"],  # Frontend URLs
+    allow_origins=["http://localhost:4000", "http://127.0.0.1:4000", "https://resume-rag-xyxs.vercel.app"], 
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],  
     allow_headers=["Content-Type", "Authorization"],
@@ -99,6 +100,7 @@ def get_current_user(
 
 
 @app.post("/register")
+@rate_limit_by_email(max_requests=3, window_seconds=3600)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == payload.email).first()
     if existing_user:
@@ -131,6 +133,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     }
 
 @app.post("/verify-account")
+@rate_limit_by_email(max_requests=5, window_seconds=300)
 def verify_account(payload: VerifyOTPRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == payload.email).first()
     
@@ -246,6 +249,7 @@ def logout(refresh_token: str, credentials: HTTPAuthorizationCredentials = Depen
     return {"message": "Logged out successfully"}
 
 @app.post("/login")
+@rate_limit_by_email(max_requests=5, window_seconds=300)
 def login(form_data: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == form_data.email).first()
     if not user or not verify_password(form_data.password, user.password):
@@ -264,6 +268,7 @@ def login(form_data: LoginRequest, db: Session = Depends(get_db)):
     }
 
 @app.post("/verify-2fa-login")
+@rate_limit_by_email(max_requests=5, window_seconds=300)
 def verify_2fa_login(payload: VerifyOTPRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == payload.email).first()
     
@@ -353,7 +358,11 @@ def get_preferences(
     user_pref = db.query(UserPreferences).filter_by(user_id=user["user_id"]).first()
         
     if not user_pref:
-        raise HTTPException(status_code=404, detail="Preferences not found")
+        # Auto-create preferences if they don't exist (for existing users)
+        user_pref = UserPreferences(user_id=user["user_id"])
+        db.add(user_pref)
+        db.commit()
+        db.refresh(user_pref)
     
     return user_pref
 
@@ -366,7 +375,11 @@ def update_table_preferences(
     pref = db.query(UserPreferences).filter(UserPreferences.user_id == user["user_id"]).first()
 
     if not pref:
-        raise HTTPException(status_code = 404, detail = "Preferences not found")
+        # Auto-create preferences if they don't exist (for existing users)
+        pref = UserPreferences(user_id=user["user_id"])
+        db.add(pref)
+        db.commit()
+        db.refresh(pref)
 
     table_prefs  = pref.table_preferences.copy()
     table_prefs[payload.table] = {
@@ -395,7 +408,11 @@ def update_global_preferences(
     pref = db.query(UserPreferences).filter(UserPreferences.user_id == user["user_id"]).first()
 
     if not pref:
-        raise HTTPException(status_code=404, detail="Preferences not found")
+        # Auto-create preferences if they don't exist (for existing users)
+        pref = UserPreferences(user_id=user["user_id"])
+        db.add(pref)
+        db.commit()
+        db.refresh(pref)
 
     if payload.theme is not None:
         pref.theme = payload.theme
@@ -418,4 +435,4 @@ def update_global_preferences(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=3000)
+    uvicorn.run(app, host="0.0.0.0", port=3002)
