@@ -34,8 +34,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:4000", "http://127.0.0.1:4000", "https://resume-rag-xyxs.vercel.app"],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],  
-    allow_headers=["Content-Type", "Authorization"], 
+    allow_methods=["*"],  
+    allow_headers=["*"], 
     expose_headers=["Content-Length"],
     max_age=600, 
 )
