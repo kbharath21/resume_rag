@@ -15,7 +15,7 @@ import { useAuthStore } from '../store/authStore';
  * API client with tailored error handling, preventing cascading failures across the system.
  */
 export const authApi: AxiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:3002',
+  baseURL: process.env.NEXT_PUBLIC_AUTH_API_URL || 'https://resumerag.kanugulabharathkumar.me/api/auth',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -36,7 +36,7 @@ export const authApi: AxiosInstance = axios.create({
  * can be versioned, scaled, and monitored independently without affecting other services.
  */
 export const searchApi: AxiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_SEARCH_API_URL || 'http://localhost:3001',
+  baseURL: process.env.NEXT_PUBLIC_SEARCH_API_URL || 'https://resumerag.kanugulabharathkumar.me/api/search',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -56,8 +56,14 @@ export const searchApi: AxiosInstance = axios.create({
  * Senior Principle: Microservices architecture with specialized services. Resume processing
  * is compute-intensive and should be isolated from search and auth services.
  */
+const storingApiUrl = process.env.NEXT_PUBLIC_STORING_API_URL || 'https://resumerag.kanugulabharathkumar.me/api/storing';
+if (typeof window !== 'undefined') {
+  console.log('[API Config] NEXT_PUBLIC_STORING_API_URL:', process.env.NEXT_PUBLIC_STORING_API_URL);
+  console.log('[API Config] storingApi baseURL:', storingApiUrl);
+}
+
 export const storingApi: AxiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_STORING_API_URL || 'http://localhost:3000',
+  baseURL: storingApiUrl,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
