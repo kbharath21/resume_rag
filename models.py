@@ -140,6 +140,8 @@ class UserPreferences(Base):
     }
     })
 
+    rag_model_preference = Column(Integer, default=1)  # 1=Dense, 2=Hybrid, 3=HyDE
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

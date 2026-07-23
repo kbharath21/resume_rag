@@ -47,6 +47,7 @@ ALGORITHM = os.getenv("ALGORITHM")
 class SearchRequest(BaseModel):
     query: str
     limit: int = 10
+    rag_model: Optional[int] = None  # 1=Dense, 2=Hybrid, 3=HyDE; defaults to user preference or 1
 
 class JobPostingCreate(BaseModel):
     company_name: str
@@ -108,35 +109,55 @@ def check_rate_limit(user_id: int):
     pipe.execute()
 
 
-@app.post("/search_candidates")
-async def search_candidates(request: SearchRequest, user: dict = Depends(get_current_user)):
-    if user["role"] != "hr":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only HR can search candidates")
-    check_rate_limit(user["user_id"])    
+# Helper functions for score conversion
+def cosine_to_confidence(cosine_score: float) -> float:
+    """Convert cosine similarity [-1, 1] to confidence percentage [0, 100]"""
+    return round(((cosine_score + 1) / 2) * 100, 2)
+
+
+def reranker_to_confidence(reranker_score: float) -> float:
+    """Convert reranker score to confidence percentage [0, 100]"""
+    return round(reranker_score * 100, 2)
+
+
+def get_bm25_score(query: str, text: str) -> float:
+    """Simple BM25-like scoring based on keyword matching"""
+    query_tokens = set(query.lower().split())
+    text_lower = text.lower()
+    
+    # Score based on keyword presence
+    matched_tokens = sum(1 for token in query_tokens if token in text_lower)
+    # Normalize to 0-100 percentage
+    if not query_tokens:
+        return 0.0
+    return min(100.0, (matched_tokens / len(query_tokens)) * 100)
+
+
+# RAG Model Implementations
+
+def dense_retrieval_model(query: str, collection_name: str, limit: int = 20):
+    """
+    Model 1: Dense Retrieval - semantic embeddings only
+    Validates: Requirements 1.1-1.4
+    """
     try:
-        collection_name = os.getenv("MILVUS_COLLECTION_NAME", "hybrid_search006")
-
-        print(f"searching for: {request.query}")
-        response= client.embeddings.create(
-            model = "text-embedding-ada-002",
-            input= request.query
-        )  
-
+        # Embed query
+        response = client.embeddings.create(
+            model="text-embedding-ada-002",
+            input=query
+        )
         query_vector = response.data[0].embedding
-
+        
+        # Search Milvus
         collection = Collection(collection_name)
         collection.load()
-
+        
         results = collection.search(
-            data = [query_vector],
-            anns_field= "embedding",
-            param={
-                "metric_type":"COSINE",
-                "params":{"nprobe":10}
-            },
-            # limit = request.limit,
-            limit = 20,
-            expr= "is_active == 1",
+            data=[query_vector],
+            anns_field="embedding",
+            param={"metric_type": "COSINE", "params": {"nprobe": 10}},
+            limit=limit,
+            expr="is_active == 1",
             output_fields=["user_id", "name", "email", "phone", "summary"]
         )
         
@@ -149,32 +170,326 @@ async def search_candidates(request: SearchRequest, user: dict = Depends(get_cur
                     "email": hit.entity.get("email"),
                     "phone": hit.entity.get("phone"),
                     "summary": hit.entity.get("summary"),
-                    "cosine_score": round(hit.score, 4)
+                    "cosine_score": hit.score
                 })
         
-        summaries = [c["summary"] for c in candidates]
-        pairs = [[request.query, summary] for summary in summaries]
-        reranker_scores = reranker.predict(pairs)
+        # Rerank
+        if candidates:
+            summaries = [c["summary"] for c in candidates]
+            pairs = [[query, summary] for summary in summaries]
+            reranker_scores = reranker.predict(pairs)
+            
+            candidates_with_scores = [
+                {
+                    **candidate,
+                    "confidence": reranker_to_confidence(float(reranker_scores[i]))
+                }
+                for i, candidate in enumerate(candidates)
+            ]
+        else:
+            candidates_with_scores = []
         
-        candidates_with_scores = [
-            {
-                **candidate,
-                "reranker_score": float(reranker_scores[i])
-            }
-            for i, candidate in enumerate(candidates)
-        ]
-        
-        candidates_with_scores.sort(key=lambda x: x["reranker_score"], reverse=True)
-        top_5 = candidates_with_scores[:5]
+        # Sort by confidence descending
+        candidates_with_scores.sort(key=lambda x: x["confidence"], reverse=True)
         
         return {
+            "candidates": candidates_with_scores,
+            "model": "Dense Retrieval",
+            "metadata": {"best_for": "Semantic Matching"}
+        }
+    except Exception as e:
+        print(f"❌ Dense Retrieval Error: {str(e)}")
+        raise
+
+
+def hybrid_rag_model(query: str, collection_name: str, limit: int = 20):
+    """
+    Model 2: Hybrid RAG - dense embeddings + BM25 keyword fusion
+    Validates: Requirements 2.1-2.5
+    """
+    try:
+        # 1. Dense search
+        response = client.embeddings.create(
+            model="text-embedding-ada-002",
+            input=query
+        )
+        query_vector = response.data[0].embedding
+        
+        collection = Collection(collection_name)
+        collection.load()
+        
+        results = collection.search(
+            data=[query_vector],
+            anns_field="embedding",
+            param={"metric_type": "COSINE", "params": {"nprobe": 10}},
+            limit=limit,
+            expr="is_active == 1",
+            output_fields=["user_id", "name", "email", "phone", "summary"]
+        )
+        
+        candidates_map = {}
+        for hits in results:
+            for hit in hits:
+                user_id = hit.entity.get("user_id")
+                dense_score = cosine_to_confidence(hit.score)
+                candidates_map[user_id] = {
+                    "user_id": user_id,
+                    "name": hit.entity.get("name"),
+                    "email": hit.entity.get("email"),
+                    "phone": hit.entity.get("phone"),
+                    "summary": hit.entity.get("summary"),
+                    "dense_score": dense_score
+                }
+        
+        # 2. BM25 keyword search on summaries
+        for user_id, candidate in candidates_map.items():
+            bm25_score = get_bm25_score(query, candidate["summary"])
+            candidate["bm25_score"] = bm25_score
+            
+            # Fuse scores: 60% dense + 40% BM25
+            candidate["hybrid_score"] = (0.6 * candidate["dense_score"]) + (0.4 * candidate["bm25_score"])
+        
+        candidates = list(candidates_map.values())
+        
+        # 3. Rerank fused results
+        if candidates:
+            summaries = [c["summary"] for c in candidates]
+            pairs = [[query, summary] for summary in summaries]
+            reranker_scores = reranker.predict(pairs)
+            
+            for i, candidate in enumerate(candidates):
+                candidate["confidence"] = reranker_to_confidence(float(reranker_scores[i]))
+        else:
+            for candidate in candidates:
+                candidate["confidence"] = candidate["hybrid_score"]
+        
+        # Sort by confidence descending
+        candidates.sort(key=lambda x: x["confidence"], reverse=True)
+        
+        return {
+            "candidates": candidates,
+            "model": "Hybrid RAG",
+            "metadata": {"best_for": "Exact Keywords & Skills"}
+        }
+    except Exception as e:
+        print(f"❌ Hybrid RAG Error: {str(e)}")
+        raise
+
+
+def hyde_model(query: str, collection_name: str, limit: int = 20):
+    """
+    Model 3: HyDE - LLM query enhancement + semantic search
+    Validates: Requirements 3.1-3.5
+    """
+    try:
+        # 1. LLM enhancement (exactly 1 call per search)
+        enhancement_prompt = f"""Given this job search query: "{query}", generate an expanded version that captures the semantic intent and key requirements. The expanded query should help find candidates with relevant experience and skills. Return only the enhanced query, no explanation."""
+        
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "user", "content": enhancement_prompt}
+            ],
+            temperature=0.3,
+            max_tokens=150
+        )
+        
+        enhanced_query = response.choices[0].message.content.strip()
+        print(f"📝 HyDE Enhanced Query: {enhanced_query}")
+        
+        # 2. Embed enhanced query
+        embed_response = client.embeddings.create(
+            model="text-embedding-ada-002",
+            input=enhanced_query
+        )
+        query_vector = embed_response.data[0].embedding
+        
+        # 3. Search Milvus with enhanced query
+        collection = Collection(collection_name)
+        collection.load()
+        
+        results = collection.search(
+            data=[query_vector],
+            anns_field="embedding",
+            param={"metric_type": "COSINE", "params": {"nprobe": 10}},
+            limit=limit,
+            expr="is_active == 1",
+            output_fields=["user_id", "name", "email", "phone", "summary"]
+        )
+        
+        candidates = []
+        for hits in results:
+            for hit in hits:
+                candidates.append({
+                    "user_id": hit.entity.get("user_id"),
+                    "name": hit.entity.get("name"),
+                    "email": hit.entity.get("email"),
+                    "phone": hit.entity.get("phone"),
+                    "summary": hit.entity.get("summary"),
+                    "cosine_score": hit.score
+                })
+        
+        # 4. Rerank
+        if candidates:
+            summaries = [c["summary"] for c in candidates]
+            pairs = [[enhanced_query, summary] for summary in summaries]
+            reranker_scores = reranker.predict(pairs)
+            
+            candidates_with_scores = [
+                {
+                    **candidate,
+                    "confidence": reranker_to_confidence(float(reranker_scores[i]))
+                }
+                for i, candidate in enumerate(candidates)
+            ]
+        else:
+            candidates_with_scores = []
+        
+        # Sort by confidence descending
+        candidates_with_scores.sort(key=lambda x: x["confidence"], reverse=True)
+        
+        return {
+            "candidates": candidates_with_scores,
+            "model": "HyDE",
+            "metadata": {"best_for": "Job Description Matching", "enhanced_query": enhanced_query}
+        }
+    except Exception as e:
+        print(f"❌ HyDE Error: {str(e)}")
+        raise
+
+
+@app.post("/search_candidates")
+async def search_candidates(request: SearchRequest, user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Multi-RAG model search endpoint
+    Supports 3 models: 1=Dense, 2=Hybrid, 3=HyDE
+    Validates: Requirements 4.1-9.3
+    """
+    if user["role"] != "hr":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only HR can search candidates")
+    
+    check_rate_limit(user["user_id"])
+    
+    try:
+        collection_name = os.getenv("MILVUS_COLLECTION_NAME", "hybrid_search006")
+        
+        # Validate rag_model parameter
+        rag_model = request.rag_model
+        if rag_model is not None and rag_model not in (1, 2, 3):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid rag_model parameter. Must be 1 (Dense Retrieval), 2 (Hybrid RAG), or 3 (HyDE)."
+            )
+        
+        # Load or create user preferences
+        user_prefs = db.query(UserPreferences).filter(UserPreferences.user_id == user["user_id"]).first()
+        if not user_prefs:
+            user_prefs = UserPreferences(user_id=user["user_id"])
+            db.add(user_prefs)
+            db.commit()
+            db.refresh(user_prefs)
+        
+        # Determine which model to use
+        if rag_model is None:
+            # Use user's preference or default to Model 1
+            rag_model = user_prefs.rag_model_preference if user_prefs.rag_model_preference else 1
+        
+        # Save user's model selection (update preference)
+        if rag_model is not None:
+            user_prefs.rag_model_preference = rag_model
+            db.commit()
+        
+        # Model names mapping
+        model_names = {
+            1: "Dense Retrieval",
+            2: "Hybrid RAG",
+            3: "HyDE"
+        }
+        
+        # Execute appropriate model
+        result = None
+        if rag_model == 1:
+            result = dense_retrieval_model(request.query, collection_name, request.limit)
+        elif rag_model == 2:
+            try:
+                result = hybrid_rag_model(request.query, collection_name, request.limit)
+            except Exception as e:
+                print(f"⚠️ Hybrid RAG failed, falling back to Dense Retrieval: {str(e)}")
+                result = dense_retrieval_model(request.query, collection_name, request.limit)
+                return {
+                    "status": "success",
+                    "notice": "BM25 index unavailable. Using Model 1 (Dense Retrieval) instead.",
+                    "query": request.query,
+                    "rag_model": 1,
+                    "model_used": "Dense Retrieval",
+                    "best_model": 1,
+                    "best_model_name": "Dense Retrieval",
+                    "best_model_confidence": result["candidates"][0]["confidence"] if result["candidates"] else 0,
+                    "model_metadata": {"use_case": "Semantic Matching"},
+                    "total_results": len(result["candidates"]),
+                    "candidates": [
+                        {
+                            "user_id": c["user_id"],
+                            "name": c["name"],
+                            "email": c["email"],
+                            "phone": c["phone"],
+                            "summary": c["summary"],
+                            "confidence": c["confidence"],
+                            "rag_model": 1
+                        }
+                        for c in result["candidates"][:5]
+                    ]
+                }
+        elif rag_model == 3:
+            result = hyde_model(request.query, collection_name, request.limit)
+        
+        # Format response
+        candidates = result["candidates"][:5] if result["candidates"] else []
+        best_model = rag_model
+        best_model_name = model_names.get(best_model, "Unknown")
+        best_model_confidence = candidates[0]["confidence"] if candidates else 0
+        
+        # Extract model metadata
+        model_metadata = result["metadata"]
+        use_case = model_metadata.get("best_for", "")
+        
+        response_data = {
             "status": "success",
             "query": request.query,
-            "total": len(top_5),
-            "candidates": top_5
+            "rag_model": rag_model,
+            "model_used": result["model"],
+            "best_model": best_model,
+            "best_model_name": best_model_name,
+            "best_model_confidence": best_model_confidence,
+            "model_metadata": {
+                "use_case": use_case
+            },
+            "total_results": len(candidates),
+            "candidates": [
+                {
+                    "user_id": c["user_id"],
+                    "name": c["name"],
+                    "email": c["email"],
+                    "phone": c["phone"],
+                    "summary": c["summary"],
+                    "confidence": c["confidence"],
+                    "rag_model": rag_model
+                }
+                for c in candidates
+            ]
         }
-    except Exception:
-        return {"status":"error", "reason":"Search failed"}    
+        
+        # Include enhanced_query for HyDE model
+        if rag_model == 3 and "enhanced_query" in model_metadata:
+            response_data["model_metadata"]["enhanced_query"] = model_metadata["enhanced_query"]
+        
+        return response_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Search Error: {str(e)}")
+        return {"status": "error", "reason": "Search failed"}    
 
 
       
