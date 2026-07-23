@@ -257,7 +257,7 @@ export default function SearchPage() {
                     {RAG_MODELS[searchResponse.rag_model]?.emoji} {searchResponse.model_used}
                   </span>
                   <span className="text-sm font-bold" style={{ color: 'var(--primary)' }}>
-                    Best Match: {searchResponse.best_model_name} ({searchResponse.best_model_confidence.toFixed(1)}%)
+                    Best Match: {searchResponse.best_model_name} ({searchResponse.best_model_confidence?.toFixed(1) || '0'}%)
                   </span>
                 </div>
                 <p className="text-xs mb-1" style={{ color: 'var(--muted)' }}>
