@@ -201,9 +201,11 @@ export default function SearchPage() {
               </div>
               
               {/* Model Description */}
-              <div className="p-3 rounded-lg border text-sm" style={{ backgroundColor: 'var(--accent)', borderColor: 'var(--border)', color: 'var(--foreground)' }}>
-                <p><strong>{RAG_MODELS[selectedModel].name}</strong>: {RAG_MODELS[selectedModel].description}</p>
-              </div>
+              {selectedModel && RAG_MODELS[selectedModel] && (
+                <div className="p-3 rounded-lg border text-sm" style={{ backgroundColor: 'var(--accent)', borderColor: 'var(--border)', color: 'var(--foreground)' }}>
+                  <p><strong>{RAG_MODELS[selectedModel].name}</strong>: {RAG_MODELS[selectedModel].description}</p>
+                </div>
+              )}
             </div>
 
             {/* Search Input */}
@@ -252,7 +254,7 @@ export default function SearchPage() {
               <div className="p-4 rounded-lg border" style={{ backgroundColor: 'var(--accent)', borderColor: 'var(--border)' }}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-semibold" style={{ color: 'var(--foreground)' }}>
-                    {RAG_MODELS[searchResponse.rag_model].emoji} {searchResponse.model_used}
+                    {RAG_MODELS[searchResponse.rag_model]?.emoji} {searchResponse.model_used}
                   </span>
                   <span className="text-sm font-bold" style={{ color: 'var(--primary)' }}>
                     Best Match: {searchResponse.best_model_name} ({searchResponse.best_model_confidence.toFixed(1)}%)
