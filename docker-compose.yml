@@ -50,7 +50,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: w&rRp!hNqscuf#dZw7APt5YJQc0nPx@
+      POSTGRES_PASSWORD: SecurePass2024
       POSTGRES_DB: resume_rag
     ports:
       - "5434:5432"
