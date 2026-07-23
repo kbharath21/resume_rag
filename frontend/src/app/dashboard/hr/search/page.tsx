@@ -284,7 +284,7 @@ export default function SearchPage() {
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold" style={{ color: 'var(--primary)' }}>
-                        {candidate.confidence?.toFixed(1) || ((candidate.reranker_score + 10) * 5).toFixed(0)}%
+                        {candidate.confidence?.toFixed(1) || (candidate.reranker_score ? ((candidate.reranker_score + 10) * 5).toFixed(0) : '0')}%
                       </div>
                       <p className="text-xs" style={{ color: 'var(--muted)' }}>Confidence</p>
                     </div>
@@ -427,7 +427,7 @@ function CandidateDetailModal({
             <div>
               <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--muted)' }}>Match Score</p>
               <p className="text-sm font-medium mt-1" style={{ color: 'var(--primary)' }}>
-                {candidate.confidence?.toFixed(1) || ((candidate.reranker_score + 10) * 5).toFixed(0)}%
+                {candidate.confidence?.toFixed(1) || (candidate.reranker_score ? ((candidate.reranker_score + 10) * 5).toFixed(0) : '0')}%
               </p>
             </div>
           </div>
