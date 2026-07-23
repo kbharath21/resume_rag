@@ -261,9 +261,9 @@ export default function SearchPage() {
                   </span>
                 </div>
                 <p className="text-xs mb-1" style={{ color: 'var(--muted)' }}>
-                  {searchResponse.model_metadata.use_case}
+                  {searchResponse.model_metadata?.use_case}
                 </p>
-                {searchResponse.model_metadata.enhanced_query && (
+                {searchResponse.model_metadata?.enhanced_query && (
                   <p className="text-xs" style={{ color: 'var(--muted)' }}>
                     💡 Enhanced Query: "{searchResponse.model_metadata.enhanced_query}"
                   </p>
