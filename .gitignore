@@ -5,3 +5,4 @@ __pycache__/
 invalid_resumes_log.txt
 *.sql
 *.md
+!README.md
